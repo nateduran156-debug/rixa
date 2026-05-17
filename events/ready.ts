@@ -1,10 +1,11 @@
-import { REST, Routes, SlashCommandBuilder, InteractionContextType, ChannelType } from "discord.js";
+import { REST, Routes, SlashCommandBuilder, InteractionContextType, ApplicationIntegrationType, ChannelType } from "discord.js";
 import type { Client } from "discord.js";
 import { logInfo } from "../utils/botLogger.js";
 import { readJSON } from "../utils/storage.js";
 
 const ALL_TAGS = ["rixa", "fawn", "ghoul", "shy", "sorrow", "ryuk", "bunni", "no tag"];
 
+const ALL_TYPES    = [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall];
 const ALL_CONTEXTS = [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel];
 
 const commands = [
@@ -13,13 +14,13 @@ const commands = [
   new SlashCommandBuilder()
     .setName("help")
     .setDescription("shows all commands")
-    .setContexts(ALL_CONTEXTS),
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS),
 
   // ── tags ──────────────────────────────────────────────────────────────────
   new SlashCommandBuilder()
     .setName("role")
     .setDescription("assign a roblox tag to a user")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addStringOption((o) => o.setName("roblox").setDescription("roblox username").setRequired(true))
     .addStringOption((o) =>
       o.setName("tag").setDescription("tag to assign").setRequired(true)
@@ -29,7 +30,7 @@ const commands = [
   new SlashCommandBuilder()
     .setName("cookie")
     .setDescription("set the roblox cookie used for role assignment (owner only)")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addStringOption((o) =>
       o.setName("cookie").setDescription("your .ROBLOSECURITY cookie value").setRequired(true),
     ),
@@ -38,45 +39,45 @@ const commands = [
   new SlashCommandBuilder()
     .setName("gc")
     .setDescription("run a full group check on a roblox user")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addStringOption((o) => o.setName("username").setDescription("roblox username").setRequired(true)),
 
   new SlashCommandBuilder()
     .setName("flag")
     .setDescription("flag a roblox group for this server")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addStringOption((o) => o.setName("groupid").setDescription("roblox group id").setRequired(true)),
 
   new SlashCommandBuilder()
     .setName("unflag")
     .setDescription("remove a group from this server's flagged list")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addStringOption((o) => o.setName("groupid").setDescription("roblox group id").setRequired(true)),
 
   new SlashCommandBuilder()
     .setName("flist")
     .setDescription("list all flagged groups — global and server-specific")
-    .setContexts(ALL_CONTEXTS),
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS),
 
   // ── verification ──────────────────────────────────────────────────────────
   new SlashCommandBuilder()
     .setName("verify")
     .setDescription("manually give a member the verified role")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addUserOption((o) => o.setName("user").setDescription("member to verify").setRequired(true))
     .addStringOption((o) => o.setName("roblox").setDescription("their roblox username (optional)").setRequired(false)),
 
   new SlashCommandBuilder()
     .setName("unverify")
     .setDescription("remove the verified role from a member")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addUserOption((o) => o.setName("user").setDescription("member to unverify").setRequired(true)),
 
   // ── setup ─────────────────────────────────────────────────────────────────
   new SlashCommandBuilder()
     .setName("setupticket")
     .setDescription("send the ticket panel to a channel")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addChannelOption((o) =>
       o.setName("channel").setDescription("channel to send the panel to").setRequired(true)
         .addChannelTypes(ChannelType.GuildText),
@@ -93,7 +94,7 @@ const commands = [
   new SlashCommandBuilder()
     .setName("logset")
     .setDescription("set the channel where ticket close logs are sent")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addChannelOption((o) =>
       o.setName("channel").setDescription("log channel").setRequired(true)
         .addChannelTypes(ChannelType.GuildText),
@@ -102,7 +103,7 @@ const commands = [
   new SlashCommandBuilder()
     .setName("taglogset")
     .setDescription("set the channel where tag approval logs are sent")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addChannelOption((o) =>
       o.setName("channel").setDescription("tag log channel").setRequired(true)
         .addChannelTypes(ChannelType.GuildText),
@@ -111,7 +112,7 @@ const commands = [
   new SlashCommandBuilder()
     .setName("botlogset")
     .setDescription("set the channel where all bot activity is logged")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addChannelOption((o) =>
       o.setName("channel").setDescription("bot log channel").setRequired(true)
         .addChannelTypes(ChannelType.GuildText),
@@ -120,19 +121,19 @@ const commands = [
   new SlashCommandBuilder()
     .setName("vset")
     .setDescription("set the role members receive when verified")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addRoleOption((o) => o.setName("role").setDescription("verification role").setRequired(true)),
 
   new SlashCommandBuilder()
     .setName("gid")
     .setDescription("set the roblox group id used for verification checks")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addStringOption((o) => o.setName("groupid").setDescription("roblox group id").setRequired(true)),
 
   new SlashCommandBuilder()
     .setName("prefix")
     .setDescription("change the command prefix for this server")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addStringOption((o) =>
       o.setName("prefix").setDescription("new prefix (max 5 chars)").setRequired(true),
     ),
@@ -141,7 +142,7 @@ const commands = [
   new SlashCommandBuilder()
     .setName("wl")
     .setDescription("manage bot whitelist")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addSubcommand((s) =>
       s.setName("bot")
         .setDescription("give a user full access to every bot command")
@@ -157,7 +158,7 @@ const commands = [
   new SlashCommandBuilder()
     .setName("wlrole")
     .setDescription("give a role access to a command or tag manager access")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addRoleOption((o) => o.setName("role").setDescription("role to whitelist").setRequired(true))
     .addStringOption((o) =>
       o.setName("command").setDescription("command name — leave blank for tag manager access").setRequired(false),
@@ -166,31 +167,31 @@ const commands = [
   new SlashCommandBuilder()
     .setName("wlp")
     .setDescription("give a role full access to all raid points commands")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addRoleOption((o) => o.setName("role").setDescription("role to whitelist for points").setRequired(true)),
 
   new SlashCommandBuilder()
     .setName("tmr")
     .setDescription("set the tag manager role — they can use the role command")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addRoleOption((o) => o.setName("role").setDescription("tag manager role").setRequired(true)),
 
   new SlashCommandBuilder()
     .setName("psr")
     .setDescription("set the points support role — they can use check, lb, and rankup")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addRoleOption((o) => o.setName("role").setDescription("points support role").setRequired(true)),
 
   new SlashCommandBuilder()
     .setName("whitelisted")
     .setDescription("shows all whitelisted users and roles")
-    .setContexts(ALL_CONTEXTS),
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS),
 
   // ── points ────────────────────────────────────────────────────────────────
   new SlashCommandBuilder()
     .setName("rankup")
     .setDescription("add raid points to a member")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addUserOption((o) => o.setName("user").setDescription("member to give points to").setRequired(true))
     .addIntegerOption((o) =>
       o.setName("amount").setDescription("amount to add (default: 1)").setRequired(false).setMinValue(1),
@@ -199,7 +200,7 @@ const commands = [
   new SlashCommandBuilder()
     .setName("removepoints")
     .setDescription("remove raid points from a member")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addUserOption((o) => o.setName("user").setDescription("member to remove points from").setRequired(true))
     .addIntegerOption((o) =>
       o.setName("amount").setDescription("amount to remove (default: 1)").setRequired(false).setMinValue(1),
@@ -208,24 +209,24 @@ const commands = [
   new SlashCommandBuilder()
     .setName("resetall")
     .setDescription("wipe all raid points in the server — prompts for confirmation")
-    .setContexts(ALL_CONTEXTS),
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS),
 
   new SlashCommandBuilder()
     .setName("check")
     .setDescription("show your or another member's current raid point total")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addUserOption((o) => o.setName("user").setDescription("member to check (default: yourself)").setRequired(false)),
 
   new SlashCommandBuilder()
     .setName("leaderboard")
     .setDescription("show the top 15 raid point holders in the server")
-    .setContexts(ALL_CONTEXTS),
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS),
 
   // ── ranks ─────────────────────────────────────────────────────────────────
   new SlashCommandBuilder()
     .setName("addrank")
     .setDescription("add a rank tier — members auto-promote when they hit the threshold")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addStringOption((o) => o.setName("roleid").setDescription("discord role id").setRequired(true))
     .addIntegerOption((o) =>
       o.setName("points").setDescription("points required to unlock this rank").setRequired(true).setMinValue(1),
@@ -237,25 +238,25 @@ const commands = [
   new SlashCommandBuilder()
     .setName("removerank")
     .setDescription("remove a rank tier from the configuration")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addStringOption((o) => o.setName("roleid").setDescription("role id of the rank to remove").setRequired(true)),
 
   new SlashCommandBuilder()
     .setName("ranks")
     .setDescription("list all configured rank tiers sorted by points required")
-    .setContexts(ALL_CONTEXTS),
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS),
 
   // ── bot settings ──────────────────────────────────────────────────────────
   new SlashCommandBuilder()
     .setName("setstatus")
     .setDescription("set the bot's playing status — use 'clear' to remove it")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addStringOption((o) => o.setName("text").setDescription("status text, or 'clear' to remove").setRequired(true)),
 
   new SlashCommandBuilder()
     .setName("setpresence")
     .setDescription("set the bot's presence status")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addStringOption((o) =>
       o.setName("status").setDescription("presence status").setRequired(true)
         .addChoices(
@@ -269,21 +270,21 @@ const commands = [
   new SlashCommandBuilder()
     .setName("setavatar")
     .setDescription("change the bot's profile picture")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addStringOption((o) => o.setName("url").setDescription("image url").setRequired(false))
     .addAttachmentOption((o) => o.setName("image").setDescription("image attachment").setRequired(false)),
 
   new SlashCommandBuilder()
     .setName("setbanner")
     .setDescription("change the bot's banner (requires nitro on the bot account)")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addStringOption((o) => o.setName("url").setDescription("image url").setRequired(false))
     .addAttachmentOption((o) => o.setName("image").setDescription("image attachment").setRequired(false)),
 
   new SlashCommandBuilder()
     .setName("setusername")
     .setDescription("change the bot's global username — discord rate-limits this, use sparingly")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addStringOption((o) =>
       o.setName("name").setDescription("new username (2–32 chars)").setRequired(true),
     ),
@@ -291,7 +292,7 @@ const commands = [
   new SlashCommandBuilder()
     .setName("setnickname")
     .setDescription("change the bot's nickname in this server — leave blank to reset")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addStringOption((o) =>
       o.setName("name").setDescription("new nickname — leave blank to reset").setRequired(false),
     ),
@@ -299,12 +300,12 @@ const commands = [
   new SlashCommandBuilder()
     .setName("backup")
     .setDescription("download all bot data as a json backup file")
-    .setContexts(ALL_CONTEXTS),
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS),
 
   new SlashCommandBuilder()
     .setName("restore")
     .setDescription("restore bot data from a backup json file")
-    .setContexts(ALL_CONTEXTS)
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addAttachmentOption((o) =>
       o.setName("file").setDescription("backup .json file").setRequired(true),
     ),
