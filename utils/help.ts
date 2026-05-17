@@ -4,15 +4,16 @@ import {
   StringSelectMenuOptionBuilder,
 } from "discord.js";
 
+const LOGO_URL = "https://www.image2url.com/r2/default/images/1779050366661-c7175f63-a315-410a-a2b4-e91dd8c446e5.jpeg";
+
 interface CommandEntry {
   name: string;
   desc: string;
 }
 
-export const CATEGORIES: Record<string, { label: string; emoji: string; description: string; commands: CommandEntry[] }> = {
+export const CATEGORIES: Record<string, { label: string; description: string; commands: CommandEntry[] }> = {
   setup: {
     label: "Setup",
-    emoji: "⚙️",
     description: "Server configuration",
     commands: [
       { name: ".setupticket [#channel] [type]",   desc: "Sends the ticket panel to a channel. Type can be verification, tag, or both (default: both)." },
@@ -26,7 +27,6 @@ export const CATEGORIES: Record<string, { label: string; emoji: string; descript
   },
   groups: {
     label: "Groups & Verification",
-    emoji: "🔍",
     description: "Group checks and verification",
     commands: [
       { name: ".gc <username>",                    desc: "Runs a full group check on a Roblox user. Shows all groups, flags, and main group membership." },
@@ -39,7 +39,6 @@ export const CATEGORIES: Record<string, { label: string; emoji: string; descript
   },
   tags: {
     label: "Tags",
-    emoji: "🏷️",
     description: "Tag assignment and management",
     commands: [
       { name: ".role <roblox> <tag>",              desc: "Assigns a Roblox tag. Options: rixa, fawn, ghoul, shy, sorrow, ryuk, bunni, no tag." },
@@ -49,7 +48,6 @@ export const CATEGORIES: Record<string, { label: string; emoji: string; descript
   },
   points: {
     label: "Points",
-    emoji: "🏆",
     description: "Raid points system",
     commands: [
       { name: ".rankup [@user] [amount]",          desc: "Adds raid points to a member. Optionally specify an amount (default: 1)." },
@@ -63,7 +61,6 @@ export const CATEGORIES: Record<string, { label: string; emoji: string; descript
   },
   ranks: {
     label: "Ranks",
-    emoji: "📊",
     description: "Rank role configuration",
     commands: [
       { name: ".addrank <roleId> <points> [name]", desc: "Adds a rank tier. Members auto-promote when their points reach the threshold. Max 30 ranks." },
@@ -73,7 +70,6 @@ export const CATEGORIES: Record<string, { label: string; emoji: string; descript
   },
   whitelist: {
     label: "Whitelist",
-    emoji: "🔐",
     description: "Access control and permissions",
     commands: [
       { name: ".wl bot @user",                     desc: "Grants a user full access to every bot command." },
@@ -83,7 +79,6 @@ export const CATEGORIES: Record<string, { label: string; emoji: string; descript
   },
   bot: {
     label: "Bot Settings",
-    emoji: "🤖",
     description: "Bot customization and data",
     commands: [
       { name: ".setavatar [url or attachment]",    desc: "Changes the bot's profile picture — attach an image or paste a URL." },
@@ -110,7 +105,6 @@ function buildSelectMenu(selected: string) {
           .setLabel(cat.label)
           .setValue(value)
           .setDescription(cat.description)
-          .setEmoji(cat.emoji)
           .setDefault(value === selected),
       ),
     );
@@ -122,8 +116,9 @@ export function buildHelpMessage(category: string = DEFAULT_CATEGORY): { embeds:
   return {
     embeds: [{
       color: 0xffffff,
-      title: `${cat.emoji}  ${cat.label}`,
+      title: cat.label,
       description: cat.commands.map((c) => `\`${c.name}\`\n${c.desc}`).join("\n\n"),
+      thumbnail: { url: LOGO_URL },
       footer: { text: "prefix: .  •  select a category below to browse" },
       timestamp: new Date().toISOString(),
     }],
