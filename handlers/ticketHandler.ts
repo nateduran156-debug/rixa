@@ -16,11 +16,13 @@ import { logTicket } from "../utils/botLogger.js";
 const WHITE = 0xffffff;
 
 const TAG_OPTIONS = [
-  { label: "Shy",    value: "shy",    description: "shy tag request" },
-  { label: "Ghoul",  value: "ghoul",  description: "ghoul tag request" },
-  { label: "Fawn",   value: "fawn",   description: "fawn tag request" },
-  { label: "Rixa",   value: "rixa",   description: "rixa tag request" },
-  { label: "Sorrow", value: "sorrow", description: "sorrow tag request" },
+  { label: "Shy",      value: "shy",      description: "shy tag request" },
+  { label: "Ghoul",    value: "ghoul",    description: "ghoul tag request" },
+  { label: "Fawn",     value: "fawn",     description: "fawn tag request" },
+  { label: "Rixa",     value: "rixa",     description: "rixa tag request" },
+  { label: "Sorrow",   value: "sorrow",   description: "sorrow tag request" },
+  { label: "Ryuk Tag", value: "ryuk tag", description: "ryuk tag request" },
+  { label: "Bunni Tag",value: "bunni tag",description: "bunni tag request" },
 ];
 
 function ts() { return new Date().toISOString(); }
