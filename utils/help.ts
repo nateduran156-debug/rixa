@@ -22,6 +22,7 @@ export const CATEGORIES: Record<string, { label: string; description: string; co
       { name: ".botlogset [#channel]",             desc: "Sets the channel where all bot activity is logged." },
       { name: ".gid <groupId>",                    desc: "Sets the Roblox group ID used for verification checks." },
       { name: ".vset @role",                       desc: "Sets the role members receive when they get verified." },
+      { name: ".vmr @role",                        desc: "Sets the verification manager role — they can use the Verify, Kick, and Close buttons in verification tickets." },
       { name: ".prefix <new>",                     desc: "Changes the command prefix for this server." },
     ],
   },
@@ -41,7 +42,7 @@ export const CATEGORIES: Record<string, { label: string; description: string; co
     label: "Tags",
     description: "Tag assignment and management",
     commands: [
-      { name: ".role <roblox> <tag>",              desc: "Assigns a Roblox tag. Options: rixa, fawn, ghoul, shy, sorrow, ryuk, bunni, no tag." },
+      { name: ".role <roblox> <tag>",              desc: "Assigns a Roblox tag. Options: rixa, fawn, ghoul, shy, sorrow, no tag." },
       { name: ".tmr @role",                        desc: "Sets the tag manager role — members with this role can use .role." },
       { name: ".wlrole @role [command]",           desc: "Gives a role access to a specific command. Leave command blank for tag manager access." },
     ],

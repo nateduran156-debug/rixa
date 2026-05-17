@@ -6,14 +6,9 @@ const TAG_GROUP_MAP: Record<string, string> = {
   ghoul:      "820648285",
   shy:        "820648285",
   sorrow:     "820648285",
-  "ryuk tag": "517986217",
-  "bunni tag":"517986217",
 };
 
-const TAG_ROLE_NAME_MAP: Record<string, string> = {
-  "ryuk tag":  "ryuk tag",
-  "bunni tag": "bunni tag",
-};
+const TAG_ROLE_NAME_MAP: Record<string, string> = {};
 
 async function getCsrfToken(): Promise<string | null> {
   try {
