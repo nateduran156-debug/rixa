@@ -9,16 +9,6 @@ export function initLogger(client: Client): void {
 
 export type LogLevel = "info" | "warn" | "error" | "command" | "ticket" | "points" | "setup";
 
-const ICONS: Record<LogLevel, string> = {
-  info:    "ℹ️",
-  warn:    "⚠️",
-  error:   "❌",
-  command: "📋",
-  ticket:  "🎫",
-  points:  "📊",
-  setup:   "⚙️",
-};
-
 export interface BotLogField {
   name: string;
   value: string;
@@ -46,7 +36,7 @@ export async function botLog(
     await ch.send({
       embeds: [{
         color: 0xffffff,
-        title: `${ICONS[level]}  ${title}`,
+        title,
         description,
         fields: fields ?? [],
         footer: { text: `rixa • ${level}` },
