@@ -143,10 +143,18 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── role ─────────────────────────────────────────────────────────────────
     case "role": {
-      const m = getMember(i);
-      if (!m || (!admin(i) && !memberHasTagManagerRole(m, guildId))) {
-        return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
-      }
+      const m   = getMember(i);
+      const wl  = getWhitelist();
+      const inDM = !i.guildId;
+
+      // in a guild: must be admin or have TMR role
+      // in DMs: must be owner or globally whitelisted
+      const allowed = inDM
+        ? (isOwner(i) || (wl["bot"] ?? []).includes(i.user.id))
+        : (!!m && (admin(i) || memberHasTagManagerRole(m, guildId)));
+
+      if (!allowed) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+
       const ALL_TAGS = ["rixa", "fawn", "ghoul", "shy", "sorrow", "ryuk", "bunni", "no tag"];
       const username = i.options.getString("roblox", true).trim();
       const tag      = i.options.getString("tag", true).toLowerCase();
@@ -156,9 +164,11 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
       await i.deferReply();
       const user = await getUserByUsername(username);
       if (!user) return i.editReply({ content: `can't find **${username}** on roblox` });
-      const s        = getGuild(guildId);
-      const rankInfo = s.groupId ? await getGroupRank(user.id, s.groupId).catch(() => null) : null;
-      const currentRank = rankInfo ? `${rankInfo.rankName} (rank ${rankInfo.rankId})` : "not in group";
+
+      const s           = inDM ? { groupId: null, tagLogChannel: null, logChannel: null } : getGuild(guildId);
+      const rankInfo    = s.groupId ? await getGroupRank(user.id, s.groupId).catch(() => null) : null;
+      const currentRank = rankInfo ? `${rankInfo.rankName} (rank ${rankInfo.rankId})` : null;
+
       let robloxNote = "";
       if (tag !== "no tag") {
         const result = await giveRobloxTagRole(username, tag);
@@ -167,34 +177,42 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
       await i.editReply({
         embeds: [{
           color: WHITE,
-          description: [`**${user.name}**`, `rank: ${currentRank}`, `tag: \`${tag}\``, robloxNote].filter(Boolean).join("\n"),
+          description: [
+            `**${user.name}**`,
+            currentRank ? `rank: ${currentRank}` : null,
+            `tag: \`${tag}\``,
+            robloxNote,
+          ].filter(Boolean).join("\n"),
           footer: { text: `given by ${i.user.username}` },
           timestamp: ts(),
         }],
       });
-      const logChannelId = s.tagLogChannel ?? s.logChannel;
-      if (logChannelId) {
-        const logCh = i.guild?.channels.cache.get(logChannelId) as TextChannel | undefined;
-        if (logCh) {
-          await logCh.send({
-            embeds: [{
-              color: WHITE,
-              title: "Tag Given",
-              description: [
-                `**Roblox:** ${user.name}`,
-                `**Given By:** <@${i.user.id}> (${i.user.username})`,
-                `**Tag:** \`${tag}\``,
-                rankInfo ? `**Previous Rank:** ${rankInfo.rankName}` : null,
-              ].filter(Boolean).join("\n"),
-              timestamp: ts(),
-            }],
-          }).catch(() => {});
+
+      if (!inDM) {
+        const logChannelId = (s as ReturnType<typeof getGuild>).tagLogChannel ?? (s as ReturnType<typeof getGuild>).logChannel;
+        if (logChannelId) {
+          const logCh = i.guild?.channels.cache.get(logChannelId) as TextChannel | undefined;
+          if (logCh) {
+            await logCh.send({
+              embeds: [{
+                color: WHITE,
+                title: "Tag Given",
+                description: [
+                  `**Roblox:** \`${user.name}\``,
+                  `**Given By:** <@${i.user.id}> (${i.user.username})`,
+                  `**Tag:** \`${tag}\``,
+                  rankInfo ? `**Previous Rank:** ${rankInfo.rankName}` : null,
+                ].filter(Boolean).join("\n"),
+                timestamp: ts(),
+              }],
+            }).catch(() => {});
+          }
         }
+        await logCommand(guildId, "Command: /role",
+          `<@${i.user.id}> gave tag \`${tag}\` to **${user.name}**`,
+          [{ name: "Roblox", value: user.name, inline: true }, { name: "Tag", value: tag, inline: true }],
+        );
       }
-      await logCommand(guildId, "Command: /role",
-        `<@${i.user.id}> gave tag \`${tag}\` to **${user.name}**`,
-        [{ name: "Roblox", value: user.name, inline: true }, { name: "Tag", value: tag, inline: true }],
-      );
       return;
     }
 
