@@ -41,7 +41,7 @@ export const CATEGORIES: Record<string, { label: string; description: string; co
     label: "Tags",
     description: "Tag assignment and management",
     commands: [
-      { name: ".role <roblox> <tag>",              desc: "Assigns a Roblox tag. Options: rixa, fawn, ghoul, shy, sorrow, no tag." },
+      { name: ".role <roblox> <tag>",              desc: "Assigns a Roblox tag. Options: rixa, fawn, ghoul, shy, sorrow, ryuk, bunni, no tag." },
       { name: ".tmr @role",                        desc: "Sets the tag manager role — members with this role can use .role." },
       { name: ".wlrole @role [command]",           desc: "Gives a role access to a specific command. Leave command blank for tag manager access." },
     ],
