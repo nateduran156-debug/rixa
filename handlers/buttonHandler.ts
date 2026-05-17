@@ -1,5 +1,5 @@
-import { type Interaction } from "discord.js";
-import { getTickets, setVerified } from "../utils/storage.js";
+import { PermissionFlagsBits, type Interaction } from "discord.js";
+import { getTickets, setVerified, getGuild, memberHasVerificationManagerRole } from "../utils/storage.js";
 import { getUserByUsername, isInGroup } from "../utils/roblox.js";
 import {
   showVerificationModal, openVerificationTicket,
@@ -7,7 +7,6 @@ import {
   handleTagApprove, handleTagDeny, closeTicket,
 } from "./ticketHandler.js";
 import { buildHelpMessage } from "../utils/help.js";
-import { getGuild } from "../utils/storage.js";
 
 export async function handleButton(interaction: Interaction) {
   const customId = "customId" in interaction ? (interaction as { customId: string }).customId : "";
@@ -68,12 +67,24 @@ export async function handleButton(interaction: Interaction) {
 
     if (customId === "ticket_close") {
       if (!ticket) return i.reply({ content: "couldnt find a ticket for this channel.", ephemeral: true });
+      const clicker = i.member as import("discord.js").GuildMember | null;
+      const isAdminOrVMR = clicker && (
+        clicker.permissions.has(PermissionFlagsBits.Administrator) ||
+        memberHasVerificationManagerRole(clicker, i.guild!.id)
+      );
+      if (!isAdminOrVMR) return i.reply({ content: "you don't have permission to close tickets.", ephemeral: true });
       await i.deferReply();
       return closeTicket(i, ticket, null);
     }
 
     if (customId === "ticket_kick") {
       if (!ticket) return i.reply({ content: "couldnt find a ticket for this channel.", ephemeral: true });
+      const clicker = i.member as import("discord.js").GuildMember | null;
+      const isAdminOrVMR = clicker && (
+        clicker.permissions.has(PermissionFlagsBits.Administrator) ||
+        memberHasVerificationManagerRole(clicker, i.guild!.id)
+      );
+      if (!isAdminOrVMR) return i.reply({ content: "you don't have permission to kick from tickets.", ephemeral: true });
       const member = await i.guild?.members.fetch(ticket.userId).catch(() => null);
       if (member) await member.kick("Removed from ticket").catch(() => {});
       return i.reply({ content: `kicked <@${ticket.userId}>.` });
@@ -83,6 +94,12 @@ export async function handleButton(interaction: Interaction) {
       if (!ticket) return i.reply({ content: "couldnt find a ticket for this channel.", ephemeral: true });
       const guild    = i.guild!;
       const settings = getGuild(guild.id);
+      const clicker  = i.member as import("discord.js").GuildMember | null;
+      const isAdminOrVMR = clicker && (
+        clicker.permissions.has(PermissionFlagsBits.Administrator) ||
+        memberHasVerificationManagerRole(clicker, guild.id)
+      );
+      if (!isAdminOrVMR) return i.reply({ content: "you don't have permission to verify members.", ephemeral: true });
 
       if (!settings.verificationRole) {
         return i.reply({ content: "no verification role set. run `.vset @role` first.", ephemeral: true });

@@ -21,8 +21,6 @@ const TAG_OPTIONS = [
   { label: "Fawn",     value: "fawn",     description: "fawn tag request" },
   { label: "Rixa",     value: "rixa",     description: "rixa tag request" },
   { label: "Sorrow",   value: "sorrow",   description: "sorrow tag request" },
-  { label: "Ryuk Tag", value: "ryuk tag", description: "ryuk tag request" },
-  { label: "Bunni Tag",value: "bunni tag",description: "bunni tag request" },
 ];
 
 function ts() { return new Date().toISOString(); }
@@ -105,10 +103,16 @@ export async function openVerificationTicket(
     (c) => c.type === ChannelType.GuildCategory && c.name.toLowerCase().includes("ticket"),
   );
 
+  const FALLBACK_VMR = "1493484814215413771";
+  const vmrRoleId = settings.verificationManagerRole ?? FALLBACK_VMR;
+
   const verifyOverwrites: import("discord.js").OverwriteResolvable[] = [
     { id: guild.id,   deny:  [PermissionFlagsBits.ViewChannel] },
     { id: i.user.id,  allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
   ];
+  if (guild.roles.cache.has(vmrRoleId)) {
+    verifyOverwrites.push({ id: vmrRoleId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] });
+  }
   if (settings.tagManagerRole && guild.roles.cache.has(settings.tagManagerRole)) {
     verifyOverwrites.push({ id: settings.tagManagerRole, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] });
   }
@@ -127,7 +131,7 @@ export async function openVerificationTicket(
   );
 
   const msg = await ticketChannel.send({
-    content: `<@${i.user.id}>`,
+    content: `<@${i.user.id}> <@&${vmrRoleId}>`,
     embeds: [{
       color: WHITE,
       title: "verification ticket",
@@ -201,7 +205,7 @@ export async function openTagChannel(interaction: Interaction) {
     .addOptions(TAG_OPTIONS);
 
   await ticketChannel.send({
-    content: `<@${i.user.id}>`,
+    content: `<@${i.user.id}> <@&1494364609140752554>`,
     embeds: [{ color: WHITE, title: "tag ticket", description: "pick a tag from the dropdown below.", timestamp: ts() }],
     components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)],
   });

@@ -155,7 +155,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
       if (!allowed) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
 
-      const ALL_TAGS = ["rixa", "fawn", "ghoul", "shy", "sorrow", "ryuk tag", "bunni tag", "no tag"];
+      const ALL_TAGS = ["rixa", "fawn", "ghoul", "shy", "sorrow", "no tag"];
       const username = i.options.getString("roblox", true).trim();
       const tag      = i.options.getString("tag", true).toLowerCase();
       if (!ALL_TAGS.includes(tag)) {
@@ -508,6 +508,15 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
       setGuild(guildId, { tagManagerRole: role.id });
       await logSetup(guildId, "Tag Manager Role Set", `<@${i.user.id}> set the tag manager role to <@&${role.id}>`);
       return i.reply({ content: `<@&${role.id}> is now the tag manager role — they can use \`/role\`` });
+    }
+
+    // ── vmr ──────────────────────────────────────────────────────────────────
+    case "vmr": {
+      if (!admin(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      const role = i.options.getRole("role", true);
+      setGuild(guildId, { verificationManagerRole: role.id });
+      await logSetup(guildId, "Verification Manager Role Set", `<@${i.user.id}> set the verification manager role to <@&${role.id}>`);
+      return i.reply({ content: `<@&${role.id}> is now the verification manager role — they can use the Verify, Kick, and Close buttons in verification tickets` });
     }
 
     // ── psr ──────────────────────────────────────────────────────────────────
