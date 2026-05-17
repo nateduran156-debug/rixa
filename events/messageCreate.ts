@@ -1,0 +1,716 @@
+import {
+  ActivityType, ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonStyle,
+  PermissionFlagsBits, type Client, type Message, type GuildMember, type TextChannel,
+} from "discord.js";
+import {
+  getGuild, setGuild, getWhitelist, setWhitelist, getPoints, savePoints,
+  memberHasCommandRole, memberHasPointsRole, memberHasTagManagerRole, memberHasPSR,
+  removeVerified, setVerified, createBackup, restoreBackup, readJSON, writeJSON,
+} from "../utils/storage.js";
+import { getUserByUsername, getUserGroups, isInGroup, getGroupInfo, getGroupInfoBatch, getGroupRank, giveRobloxTagRole } from "../utils/roblox.js";
+import { buildLeaderboardEmbed, refreshLeaderboard } from "../utils/leaderboard.js";
+import { buildPage } from "../utils/help.js";
+import { sendTicketPanel, handleTagManagerMessage } from "../handlers/ticketHandler.js";
+import { logCommand, logPoints, logSetup, logInfo, logError } from "../utils/botLogger.js";
+
+const WHITE = 0xffffff;
+
+// these are always shown in .flist regardless of what each server has configured
+const ALWAYS_FLAGGED: Array<{ id: string; name: string }> = [
+  { id: "650907997",  name: "YNGS"     },
+  { id: "16848719",   name: "Murked"   },
+  { id: "214730861",  name: "MTX"      },
+  { id: "33861944",   name: "XVII"     },
+  { id: "495825805",  name: "Unloyal"  },
+  { id: "862795072",  name: "Flaxx"    },
+  { id: "32564331",   name: "EXE"      },
+  { id: "265955381",  name: "Woken"    },
+  { id: "15957207",   name: "GBG"      },
+  { id: "1024109775", name: "Paranoia" },
+  { id: "872867055",  name: "Laced"    },
+  { id: "396910998",  name: "CUREK"    },
+  { id: "34546804",   name: "Snowfall" },
+  { id: "489845165",  name: "Fraid"    },
+  { id: "91960354",   name: "303w"     },
+  { id: "580313332",  name: "Fallenk"  },
+  { id: "339952823",  name: "Returnw"  },
+  { id: "575770529",  name: "RANGERS"  },
+  { id: "140364569",  name: "racek"    },
+];
+const ALWAYS_FLAGGED_MAP = Object.fromEntries(ALWAYS_FLAGGED.map((g) => [g.id, g.name]));
+const ALWAYS_FLAGGED_IDS = new Set(ALWAYS_FLAGGED.map((g) => g.id));
+
+function ts() { return new Date().toISOString(); }
+function isAdmin(m: GuildMember) { return m.permissions.has(PermissionFlagsBits.Administrator); }
+function hasManageGuild(m: GuildMember) { return m.permissions.has(PermissionFlagsBits.ManageGuild) || isAdmin(m); }
+function hasManageRoles(m: GuildMember) { return m.permissions.has(PermissionFlagsBits.ManageRoles) || isAdmin(m); }
+
+function hasFullAccess(member: GuildMember, guildId: string, wl: Record<string, string[]>, cmd: string): boolean {
+  return (
+    isAdmin(member) ||
+    (wl["bot"] ?? []).includes(member.id) ||
+    (wl[cmd] ?? []).includes(member.id) ||
+    memberHasCommandRole(member, guildId, cmd) ||
+    memberHasPointsRole(member, guildId) ||
+    memberHasPSR(member, guildId)
+  );
+}
+
+async function fetchImage(urlOrAttachment: string): Promise<Buffer> {
+  const res = await fetch(urlOrAttachment);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return Buffer.from(await res.arrayBuffer());
+}
+
+export function registerMessageCreate(client: Client) {
+  client.on("messageCreate", async (message: Message) => {
+    if (message.author.bot) return;
+    if (!message.guild) return;
+
+    const member   = message.member as GuildMember;
+    const settings = getGuild(message.guild.id);
+    const PREFIX   = settings.prefix ?? ".";
+
+    await handleTagManagerMessage(message).catch(() => {});
+
+    if (!message.content.startsWith(PREFIX)) return;
+
+    const args = message.content.slice(PREFIX.length).trim().split(/\s+/);
+    const cmd  = args.shift()?.toLowerCase();
+    if (!cmd) return;
+
+    try {
+      await dispatch(cmd, args, message, member, client);
+    } catch (err) {
+      console.error(`[prefix:${cmd}]`, err);
+      await logError(message.guild.id, `Command Error: .${cmd}`,
+        `something went wrong when <@${message.author.id}> ran \`.${cmd}\``,
+        [{ name: "Error", value: String(err).slice(0, 1000) }],
+      );
+      await message.reply("something went wrong on my end, try again").catch(() => {});
+    }
+  });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function dispatch(cmd: string, args: string[], message: Message, member: GuildMember, client: Client): Promise<any> {
+  const guildId = message.guild!.id;
+  const wl      = getWhitelist();
+
+  switch (cmd) {
+
+    case "role": {
+      if (!isAdmin(member) && !memberHasTagManagerRole(member, guildId)) return message.reply("your not whitelisted loser");
+
+      const ALL_TAGS = ["rixa", "fawn", "ghoul", "shy", "sorrow", "ryuk", "bunni", "no tag"];
+      const username = args[0];
+      const tagInput = args.slice(1).join(" ").toLowerCase();
+
+      if (!username || !tagInput) {
+        return message.reply("`.role <roblox username> <tag>`\ntags: rixa, fawn, ghoul, shy, sorrow, ryuk, bunni, no tag");
+      }
+      if (!ALL_TAGS.includes(tagInput)) {
+        return message.reply(`\`${tagInput}\` isnt a valid tag. options: ${ALL_TAGS.map((t) => `\`${t}\``).join(", ")}`);
+      }
+
+      const loading = await message.reply(`looking up **${username}**...`);
+      const user    = await getUserByUsername(username);
+      if (!user) return loading.edit({ content: `cant find **${username}** on roblox` });
+
+      const s        = getGuild(guildId);
+      const rankInfo = s.groupId ? await getGroupRank(user.id, s.groupId).catch(() => null) : null;
+      const currentRank = rankInfo ? `${rankInfo.rankName} (rank ${rankInfo.rankId})` : "not in group";
+
+      let robloxNote = "";
+      if (tagInput !== "no tag") {
+        const result = await giveRobloxTagRole(username, tagInput);
+        robloxNote = result.ok
+          ? `✅ roblox role **${tagInput}** assigned`
+          : `⚠️ roblox role failed: ${result.reason}`;
+      }
+
+      await loading.edit({
+        content: null,
+        embeds: [{
+          color: WHITE,
+          description: [
+            `**${user.name}**`,
+            `rank: ${currentRank}`,
+            `tag: \`${tagInput}\``,
+            robloxNote,
+          ].filter(Boolean).join("\n"),
+          footer: { text: `given by ${message.author.username}` },
+          timestamp: ts(),
+        }],
+      });
+
+      const logChannelId = s.tagLogChannel ?? s.logChannel;
+      if (logChannelId) {
+        const logChannel = message.guild!.channels.cache.get(logChannelId) as TextChannel | undefined;
+        if (logChannel) {
+          await logChannel.send({
+            embeds: [{
+              color: WHITE,
+              title: "Tag Given",
+              description: [
+                `**Roblox:** ${user.name}`,
+                `**Given By:** <@${message.author.id}> (${message.author.username})`,
+                `**Tag:** \`${tagInput}\``,
+                rankInfo ? `**Previous Rank:** ${rankInfo.rankName}` : null,
+              ].filter(Boolean).join("\n"),
+              timestamp: ts(),
+            }],
+          }).catch(() => {});
+        }
+      }
+
+      await logCommand(guildId, "Command: .role",
+        `<@${message.author.id}> gave tag \`${tagInput}\` to **${user.name}**`,
+        [{ name: "Roblox", value: user.name, inline: true }, { name: "Tag", value: tagInput, inline: true }],
+      );
+      return;
+    }
+
+    case "setupticket": {
+      if (!hasManageGuild(member)) return message.reply("your not whitelisted loser");
+      const channels = message.mentions.channels;
+      const type = (args.find((a) => ["verification", "tag", "both"].includes(a)) ?? "both") as "verification" | "tag" | "both";
+      if (channels.size === 0) return message.reply("mention a channel. example: `.setupticket #tickets both`");
+      for (const [, ch] of channels) {
+        await sendTicketPanel(ch as TextChannel, type);
+        setGuild(guildId, { ticketChannel: ch.id });
+      }
+      await logSetup(guildId, "Ticket Panel Set Up",
+        `<@${message.author.id}> set up the ticket panel`,
+        [{ name: "Type", value: type, inline: true }, { name: "Channel", value: `<#${channels.first()?.id}>`, inline: true }],
+      );
+      return message.reply(`panel sent to ${[...channels.values()].map((c) => `<#${c.id}>`).join(", ")}`);
+    }
+
+    case "logset": {
+      if (!hasManageGuild(member)) return message.reply("your not whitelisted loser");
+      const ch = message.mentions.channels.first() ?? message.channel;
+      setGuild(guildId, { logChannel: (ch as TextChannel).id });
+      await logSetup(guildId, "Log Channel Set", `<@${message.author.id}> set the log channel to <#${ch.id}>`);
+      return message.reply(`logs going to <#${ch.id}> now`);
+    }
+
+    case "taglogset": {
+      if (!hasManageGuild(member)) return message.reply("your not whitelisted loser");
+      const ch = message.mentions.channels.first() ?? message.channel;
+      setGuild(guildId, { tagLogChannel: (ch as TextChannel).id });
+      await logSetup(guildId, "Tag Log Channel Set", `<@${message.author.id}> set the tag log channel to <#${ch.id}>`);
+      return message.reply(`tag logs going to <#${ch.id}> now`);
+    }
+
+    case "botlogset": {
+      if (!isAdmin(member)) return message.reply("your not whitelisted loser");
+      const ch = message.mentions.channels.first() ?? message.channel;
+      setGuild(guildId, { botLogChannel: (ch as TextChannel).id });
+      await logInfo(guildId, "Bot Log Channel Set",
+        `<@${message.author.id}> set this channel as the bot log channel. all bot activity will be logged here.`,
+      );
+      return message.reply(`bot logs going to <#${ch.id}> now`);
+    }
+
+    case "vset": {
+      if (!hasManageGuild(member)) return message.reply("your not whitelisted loser");
+      const role = message.mentions.roles.first();
+      if (!role) return message.reply("mention the role you want to use for verification");
+      setGuild(guildId, { verificationRole: role.id });
+      await logSetup(guildId, "Verification Role Set", `<@${message.author.id}> set the verification role to <@&${role.id}>`);
+      return message.reply(`verification role is now <@&${role.id}>`);
+    }
+
+    case "gid": {
+      if (!hasManageGuild(member)) return message.reply("your not whitelisted loser");
+      const groupId = args[0];
+      if (!groupId || isNaN(Number(groupId))) return message.reply("need a valid roblox group id");
+      setGuild(guildId, { groupId });
+      await logSetup(guildId, "Group ID Set", `<@${message.author.id}> set the group ID to \`${groupId}\``);
+      return message.reply(`group id set to \`${groupId}\``);
+    }
+
+    case "prefix": {
+      if (!isAdmin(member)) return message.reply("your not whitelisted loser");
+      const newPrefix = args[0];
+      if (!newPrefix) return message.reply("`.prefix <new>`");
+      if (newPrefix.length > 5) return message.reply("keep it under 5 characters");
+      setGuild(guildId, { prefix: newPrefix });
+      await logSetup(guildId, "Prefix Changed", `<@${message.author.id}> changed the prefix to \`${newPrefix}\``);
+      return message.reply(`prefix is now \`${newPrefix}\``);
+    }
+
+    case "flag": {
+      if (!hasManageGuild(member)) return message.reply("your not whitelisted loser");
+      const gid = args[0];
+      if (!gid || isNaN(Number(gid))) return message.reply("need a valid group id");
+      if (ALWAYS_FLAGGED_IDS.has(gid)) return message.reply(`\`${gid}\` is already in the global flag list`);
+      const s       = getGuild(guildId);
+      const flagged = s.flaggedGroups ?? [];
+      if (flagged.includes(gid)) return message.reply(`\`${gid}\` is already flagged`);
+      flagged.push(gid);
+      const info       = await getGroupInfo(gid).catch(() => null);
+      const groupNames = s.groupNames ?? {};
+      if (info?.name) groupNames[String(gid)] = info.name;
+      setGuild(guildId, { flaggedGroups: flagged, groupNames });
+      await logSetup(guildId, "Group Flagged", `<@${message.author.id}> flagged **${info?.name ?? gid}** (\`${gid}\`)`);
+      return message.reply(`flagged **${info?.name ?? gid}** (\`${gid}\`)`);
+    }
+
+    case "unflag": {
+      if (!hasManageGuild(member)) return message.reply("your not whitelisted loser");
+      const gid = args[0];
+      if (!gid) return message.reply("need a group id to unflag");
+      if (ALWAYS_FLAGGED_IDS.has(gid)) return message.reply(`\`${gid}\` is in the global list and cant be unflagged`);
+      const s       = getGuild(guildId);
+      const flagged = s.flaggedGroups ?? [];
+      if (!flagged.includes(gid)) return message.reply(`\`${gid}\` isnt on the list`);
+      setGuild(guildId, { flaggedGroups: flagged.filter((g) => g !== gid) });
+      await logSetup(guildId, "Group Unflagged", `<@${message.author.id}> unflagged group \`${gid}\``);
+      return message.reply(`unflagged \`${gid}\``);
+    }
+
+    case "flist": {
+      const s      = getGuild(guildId);
+      const custom = s.flaggedGroups ?? [];
+
+      // merge always-flagged + guild custom, no duplicates
+      const alwaysIds = ALWAYS_FLAGGED.map((g) => g.id);
+      const combined  = [...new Set([...alwaysIds, ...custom])];
+
+      const loading     = await message.reply("pulling group info...");
+      const apiMap      = await getGroupInfoBatch(combined);
+      const storedNames = s.groupNames ?? {};
+
+      const lines = combined.map((id, i) => {
+        const name = apiMap[id] ?? ALWAYS_FLAGGED_MAP[id] ?? storedNames[id] ?? "Unknown Group";
+        // format: number. [Name](link)  |  `id`
+        return `\`${i + 1}.\` [${name}](https://www.roblox.com/groups/${id}) \`${id}\``;
+      });
+
+      // chunk into pages in case theres a ton of groups
+      const MAX = 4000;
+      const pages: string[] = [];
+      let cur = "";
+      for (const line of lines) {
+        const next = cur ? cur + "\n" + line : line;
+        if (next.length > MAX) { pages.push(cur); cur = line; } else { cur = next; }
+      }
+      if (cur) pages.push(cur);
+
+      // FIX: was `flagged.length` (undefined) — now correctly uses `combined.length`
+      await loading.edit({
+        content: null,
+        embeds: [{ color: WHITE, title: `flagged groups (${combined.length})`, description: pages[0], footer: { text: message.client.user?.username ?? "bot" }, timestamp: ts() }],
+      });
+      for (let p = 1; p < pages.length; p++) {
+        await (message.channel as TextChannel).send({ embeds: [{ color: WHITE, description: pages[p], footer: { text: `page ${p + 1}/${pages.length}` } }] });
+      }
+      return;
+    }
+
+    case "gc": {
+      const username = args[0];
+      if (!username) { await message.reply("give me a username"); return; }
+      const loading = await message.reply(`checking **${username}**...`);
+      const user    = await getUserByUsername(username);
+      if (!user) return loading.edit({ content: `cant find **${username}** on roblox` });
+      const s               = getGuild(guildId);
+      const groupId         = s.groupId ?? "820648285";
+      const groups          = await getUserGroups(user.id);
+      // check both the guild's custom flagged groups AND the always-flagged global list
+      const guildFlaggedIds = s.flaggedGroups ?? [];
+      const flaggedHits     = groups.filter((g) =>
+        guildFlaggedIds.includes(String(g.group.id)) || ALWAYS_FLAGGED_IDS.has(String(g.group.id)),
+      );
+      const header      = `**${user.name}**\n\n**groups**\n`;
+      const MAX_DESC    = 4096;
+      const groupLines  = groups.length > 0
+        ? groups.map((g) => `• [${g.group.name}](https://www.roblox.com/groups/${g.group.id})`)
+        : ["• none"];
+      let groupList = "";
+      for (const line of groupLines) {
+        if ((header + groupList + line + "\n").length > MAX_DESC - 20) {
+          groupList += `… and ${groups.length - groupList.split("\n").filter(Boolean).length} more`;
+          break;
+        }
+        groupList += line + "\n";
+      }
+      groupList = groupList.trimEnd() || "• none";
+      const inGroup = await isInGroup(user.id, groupId).catch(() => false);
+      const embeds: object[] = [
+        { color: WHITE, description: `${header}${groupList}`, footer: { text: message.client.user?.username ?? "bot" }, timestamp: ts() },
+      ];
+      if (flaggedHits.length > 0) {
+        embeds.push({ color: WHITE, description: `**${user.name}** isnt cleared — ask them to leave:\n\n${flaggedHits.map((m) => `• [${m.group.name}](https://www.roblox.com/groups/${m.group.id})`).join("\n")}`, timestamp: ts() });
+      }
+      embeds.push({
+        color: WHITE,
+        description: inGroup
+          ? `✓ **${user.name}** is in the group and good to verify\n\n**group id:** \`${groupId}\`\n**link:** [join here](https://www.roblox.com/communities/${groupId})`
+          : `✗ **${user.name}** isnt in the group\n\n**group id:** \`${groupId}\`\n**link:** [join here](https://www.roblox.com/communities/${groupId})`,
+        timestamp: ts(),
+      });
+      return loading.edit({ content: null, embeds });
+    }
+
+    case "verify": {
+      if (!hasManageRoles(member)) return message.reply("your not whitelisted loser");
+      const target     = message.mentions.members?.first();
+      if (!target) return message.reply("mention the user you want to verify");
+      const robloxName = args[1] ?? null;
+      const s          = getGuild(guildId);
+      if (!s.verificationRole) return message.reply("no verification role set — run `.vset @role` first");
+      await target.roles.add(s.verificationRole).catch(() => {});
+      if (robloxName) setVerified(target.id, robloxName);
+      await logCommand(guildId, "Manual Verify",
+        `<@${message.author.id}> verified <@${target.id}>${robloxName ? ` as **${robloxName}**` : ""}`,
+        [{ name: "User", value: `<@${target.id}>`, inline: true }, { name: "Roblox", value: robloxName ?? "N/A", inline: true }],
+      );
+      return message.reply(`verified <@${target.id}>${robloxName ? ` as **${robloxName}**` : ""}`);
+    }
+
+    case "unverify": {
+      if (!hasManageRoles(member)) return message.reply("your not whitelisted loser");
+      const target = message.mentions.members?.first();
+      if (!target) return message.reply("mention the user you want to unverify");
+      const s = getGuild(guildId);
+      if (s.verificationRole) await target.roles.remove(s.verificationRole).catch(() => {});
+      removeVerified(target.id);
+      await logCommand(guildId, "Manual Unverify", `<@${message.author.id}> unverified <@${target.id}>`);
+      return message.reply(`removed verification from <@${target.id}>`);
+    }
+
+    case "wl": {
+      if (!isAdmin(member)) return message.reply("your not whitelisted loser");
+      const sub = args[0];
+      if (sub === "bot") {
+        const t = message.mentions.users.first();
+        if (!t) return message.reply("mention the user you want to whitelist");
+        const wlData  = getWhitelist();
+        wlData["bot"] = wlData["bot"] ?? [];
+        if (wlData["bot"].includes(t.id)) return message.reply(`<@${t.id}> already has full access`);
+        wlData["bot"].push(t.id);
+        setWhitelist(wlData);
+        await logSetup(guildId, "Whitelist Updated", `<@${message.author.id}> gave <@${t.id}> full bot access`);
+        return message.reply(`<@${t.id}> now has access to all commands`);
+      }
+      if (sub === "command") {
+        const cmdName = args[1];
+        const t       = message.mentions.users.first();
+        if (!cmdName || !t) return message.reply("`.wl command <name> @user`");
+        const wlData    = getWhitelist();
+        wlData[cmdName] = wlData[cmdName] ?? [];
+        if (wlData[cmdName]!.includes(t.id)) return message.reply(`<@${t.id}> can already use \`.${cmdName}\``);
+        wlData[cmdName]!.push(t.id);
+        setWhitelist(wlData);
+        await logSetup(guildId, "Whitelist Updated", `<@${message.author.id}> gave <@${t.id}> access to \`.${cmdName}\``);
+        return message.reply(`<@${t.id}> can now use \`.${cmdName}\``);
+      }
+      return message.reply("`.wl bot @user` or `.wl command <name> @user`");
+    }
+
+    case "wlrole": {
+      if (!hasManageGuild(member)) return message.reply("your not whitelisted loser");
+      const role = message.mentions.roles.first();
+      if (!role) return message.reply("`.wlrole @role [command]`");
+      const cmdName = args[1]?.toLowerCase();
+      const s       = getGuild(guildId);
+      if (!cmdName) {
+        const roles = s.tagManagerRoles ?? [];
+        if (roles.includes(role.id)) return message.reply(`<@&${role.id}> is already a tag manager role`);
+        roles.push(role.id);
+        setGuild(guildId, { tagManagerRoles: roles });
+        await logSetup(guildId, "Role Whitelisted", `<@${message.author.id}> made <@&${role.id}> a tag manager role`);
+        return message.reply(`<@&${role.id}> can now manage tag tickets`);
+      }
+      const commandRoles = s.commandRoles ?? {};
+      commandRoles[cmdName] = commandRoles[cmdName] ?? [];
+      if (commandRoles[cmdName]!.includes(role.id)) return message.reply(`<@&${role.id}> already has access to \`.${cmdName}\``);
+      commandRoles[cmdName]!.push(role.id);
+      setGuild(guildId, { commandRoles });
+      await logSetup(guildId, "Role Whitelisted", `<@${message.author.id}> gave <@&${role.id}> access to \`.${cmdName}\``);
+      return message.reply(`<@&${role.id}> can now use \`.${cmdName}\``);
+    }
+
+    case "wlp": {
+      if (!isAdmin(member)) return message.reply("your not whitelisted loser");
+      const role = message.mentions.roles.first();
+      if (!role) return message.reply("`.wlp @role`");
+      const s = getGuild(guildId);
+      if (s.pointsRole === role.id) return message.reply(`<@&${role.id}> already manages points`);
+      setGuild(guildId, { pointsRole: role.id });
+      await logSetup(guildId, "Points Role Set", `<@${message.author.id}> gave <@&${role.id}> full points access`);
+      return message.reply(`<@&${role.id}> can now use all raid points commands`);
+    }
+
+    case "tmr": {
+      if (!isAdmin(member)) return message.reply("your not whitelisted loser");
+      const roleArg = args[0];
+      if (!roleArg) return message.reply("`.tmr @role` or `.tmr <role id>`");
+      const role = message.mentions.roles.first() ?? message.guild!.roles.cache.get(roleArg.replace(/\D/g, ""));
+      if (!role) return message.reply("couldnt find that role — mention it or give me a valid id");
+      setGuild(guildId, { tagManagerRole: role.id });
+      await logSetup(guildId, "Tag Manager Role Set", `<@${message.author.id}> set the tag manager role to <@&${role.id}>`);
+      return message.reply(`<@&${role.id}> is now the tag manager role — they can use \`.role\``);
+    }
+
+    case "psr": {
+      if (!isAdmin(member)) return message.reply("your not whitelisted loser");
+      const roleArg = args[0];
+      if (!roleArg) return message.reply("`.psr @role` or `.psr <role id>`");
+      const role = message.mentions.roles.first() ?? message.guild!.roles.cache.get(roleArg.replace(/\D/g, ""));
+      if (!role) return message.reply("couldnt find that role — mention it or give me a valid id");
+      setGuild(guildId, { pointsSupportRole: role.id });
+      await logSetup(guildId, "Points Support Role Set", `<@${message.author.id}> set the points support role to <@&${role.id}>`);
+      return message.reply(`<@&${role.id}> is now the points support role — they can use \`.check\`, \`.lb\`, and \`.rankup\``);
+    }
+
+    case "whitelisted": {
+      if (!isAdmin(member)) return message.reply("your not whitelisted loser");
+      const wlData       = getWhitelist();
+      const s            = getGuild(guildId);
+      const lines: string[] = [];
+      for (const k of Object.keys(wlData)) {
+        if ((wlData[k] ?? []).length > 0) {
+          lines.push(`**\`.${k}\`** (users)\n${wlData[k]!.map((id) => `<@${id}>`).join(", ")}`);
+        }
+      }
+      const commandRoles = s.commandRoles ?? {};
+      for (const k of Object.keys(commandRoles)) {
+        if ((commandRoles[k] ?? []).length > 0) {
+          lines.push(`**\`.${k}\`** (roles)\n${commandRoles[k]!.map((id) => `<@&${id}>`).join(", ")}`);
+        }
+      }
+      if ((s.tagManagerRoles ?? []).length > 0) lines.push(`**tag manager** (roles)\n${s.tagManagerRoles!.map((id) => `<@&${id}>`).join(", ")}`);
+      if (s.tagManagerRole) lines.push(`**tag manager role** (.tmr)\n<@&${s.tagManagerRole}> — can use \`.role\``);
+      if (s.pointsRole) lines.push(`**points manager** (role)\n<@&${s.pointsRole}>`);
+      if (s.pointsSupportRole) lines.push(`**points support role** (.psr)\n<@&${s.pointsSupportRole}> — can use \`.check\`, \`.lb\`, \`.rankup\``);
+      if (lines.length === 0) return message.reply("nothing whitelisted yet");
+      await message.reply({ embeds: [{ color: WHITE, description: lines.join("\n\n"), footer: { text: message.guild!.name }, timestamp: ts() }] });
+      return;
+    }
+
+    case "rankup": {
+      if (!hasFullAccess(member, guildId, wl, "rankup")) return message.reply("your not whitelisted loser");
+      let amount = 1;
+      const target = message.mentions.users.first();
+      if (!target) return message.reply("mention a user to give points to");
+      if (args.length >= 2 && !isNaN(Number(args[0]))) amount = parseInt(args[0]!);
+      if (amount <= 0) return message.reply("amount has to be more than 0");
+      const pts = getPoints(guildId);
+      pts[target.id] = (pts[target.id] ?? 0) + amount;
+      savePoints(guildId, pts);
+      refreshLeaderboard(client, guildId).catch(() => {});
+      await logPoints(guildId, "Points Added",
+        `<@${message.author.id}> gave **+${amount}** to <@${target.id}>`,
+        [{ name: "New Total", value: `${pts[target.id]} pts`, inline: true }],
+      );
+      return message.reply({ embeds: [{ color: WHITE, description: `+**${amount}** to <@${target.id}> — **${pts[target.id]}** pt${pts[target.id] !== 1 ? "s" : ""} total`, footer: { text: `given by ${message.author.username}` }, timestamp: ts() }] });
+    }
+
+    case "remove": {
+      if (!hasFullAccess(member, guildId, wl, "remove")) return message.reply("your not whitelisted loser");
+      let amount = 1;
+      const target = message.mentions.users.first();
+      if (!target) return message.reply("mention a user to remove points from");
+      if (args.length >= 2 && !isNaN(Number(args[0]))) amount = parseInt(args[0]!);
+      if (amount <= 0) return message.reply("amount has to be more than 0");
+      const pts = getPoints(guildId);
+      pts[target.id] = Math.max(0, (pts[target.id] ?? 0) - amount);
+      savePoints(guildId, pts);
+      refreshLeaderboard(client, guildId).catch(() => {});
+      await logPoints(guildId, "Points Removed",
+        `<@${message.author.id}> removed **-${amount}** from <@${target.id}>`,
+        [{ name: "New Total", value: `${pts[target.id]} pts`, inline: true }],
+      );
+      return message.reply({ embeds: [{ color: WHITE, description: `-**${amount}** from <@${target.id}> — **${pts[target.id]}** pt${pts[target.id] !== 1 ? "s" : ""} total`, footer: { text: `removed by ${message.author.username}` }, timestamp: ts() }] });
+    }
+
+    case "resetall": {
+      const hasAccess = isAdmin(member) || memberHasPointsRole(member, guildId);
+      if (!hasAccess) return message.reply("your not whitelisted loser");
+      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId("resetall_confirm").setLabel("reset all points").setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId("resetall_cancel").setLabel("cancel").setStyle(ButtonStyle.Secondary),
+      );
+      const msg = await message.reply({
+        embeds: [{ color: WHITE, title: "reset all points", description: "this wipes **every** raid point in the server and cant be undone", footer: { text: `requested by ${message.author.username}` }, timestamp: ts() }],
+        components: [row],
+      });
+      const collector = msg.createMessageComponentCollector({ filter: (i) => i.user.id === message.author.id, time: 15000 });
+      collector.on("collect", async (i) => {
+        if (i.customId === "resetall_confirm") {
+          const d = readJSON<Record<string, unknown>>("points.json");
+          d[guildId] = {};
+          writeJSON("points.json", d);
+          await logPoints(guildId, "Points Reset", `<@${message.author.id}> wiped all raid points in this server`);
+          await i.update({ embeds: [{ color: WHITE, title: "points wiped", description: "all raid points cleared", footer: { text: `done by ${message.author.username}` }, timestamp: ts() }], components: [] });
+        } else {
+          await i.update({ embeds: [{ color: WHITE, title: "cancelled", description: "nothing changed", timestamp: ts() }], components: [] });
+        }
+        collector.stop();
+      });
+      collector.on("end", (_, reason) => { if (reason === "time") msg.edit({ components: [] }).catch(() => {}); });
+      return;
+    }
+
+    case "check": {
+      const target = message.mentions.users.first();
+      if (target && target.id !== message.author.id) {
+        if (!hasFullAccess(member, guildId, wl, "check") && !memberHasPSR(member, guildId)) { await message.reply("your not whitelisted loser"); return; }
+      }
+      const subject = target ?? message.author;
+      const pts     = getPoints(guildId);
+      const p       = pts[subject.id] ?? 0;
+      await message.reply({ embeds: [{ color: WHITE, description: `<@${subject.id}> — **${p}** pt${p !== 1 ? "s" : ""}`, footer: { text: message.guild!.name }, timestamp: ts() }] });
+      return;
+    }
+
+    case "leaderboard":
+    case "lb": {
+      const pts   = getPoints(guildId);
+      const embed = buildLeaderboardEmbed(pts, message.guild!.name);
+      if (!embed) { await message.reply("nobody has any points yet. be the first!"); return; }
+      const msg = await message.reply({ embeds: [embed] });
+      setGuild(guildId, { leaderboardMessage: { channelId: message.channel.id, messageId: msg.id } });
+      return;
+    }
+
+    case "status": {
+      if (!isAdmin(member)) { await message.reply("your not whitelisted loser"); return; }
+      const text = args.join(" ");
+      if (!text) { await message.reply("`.status <text>` or `.status clear`"); return; }
+      if (text.toLowerCase() === "clear") {
+        client.user?.setPresence({ activities: [] });
+        await logInfo(guildId, "Status Cleared", `<@${message.author.id}> cleared the bot status`);
+        await message.reply("status cleared");
+        return;
+      }
+      client.user?.setPresence({ activities: [{ name: text, type: ActivityType.Playing }] });
+      await logInfo(guildId, "Status Updated", `<@${message.author.id}> set the bot status to: **${text}**`);
+      await message.reply(`status set to **${text}**`);
+      return;
+    }
+
+    case "presence": {
+      if (!isAdmin(member)) { await message.reply("your not whitelisted loser"); return; }
+      const valid = ["online", "idle", "dnd", "invisible"] as const;
+      const s = args[0]?.toLowerCase() as typeof valid[number] | undefined;
+      if (!s || !valid.includes(s)) { await message.reply("`.presence <online|idle|dnd|invisible>`"); return; }
+      client.user?.setPresence({ status: s });
+      await logInfo(guildId, "Presence Updated", `<@${message.author.id}> set bot presence to **${s}**`);
+      await message.reply(`presence set to **${s}**`);
+      return;
+    }
+
+    case "setavatar":
+    case "setpfp": {
+      if (!isAdmin(member)) { await message.reply("your not whitelisted loser"); return; }
+      const url = message.attachments.first()?.url ?? args[0];
+      if (!url) { await message.reply("attach an image or give me a url. example: `.setavatar https://...`"); return; }
+      const loading = await message.reply("updating pfp...");
+      try {
+        const buffer = await fetchImage(url);
+        await client.user!.setAvatar(buffer);
+        await logInfo(guildId, "Avatar Updated", `<@${message.author.id}> changed the bot's profile picture`);
+        await loading.edit("pfp updated ✅");
+      } catch (e: unknown) {
+        await loading.edit(`couldnt update it — ${String(e)}`);
+      }
+      return;
+    }
+
+    case "setbanner": {
+      if (!isAdmin(member)) { await message.reply("your not whitelisted loser"); return; }
+      const url = message.attachments.first()?.url ?? args[0];
+      if (!url) { await message.reply("attach an image or give me a url. example: `.setbanner https://...`"); return; }
+      const loading = await message.reply("updating banner...");
+      try {
+        const buffer = await fetchImage(url);
+        await (client.user as import("discord.js").ClientUser & { setBanner: (b: Buffer) => Promise<unknown> }).setBanner(buffer);
+        await logInfo(guildId, "Banner Updated", `<@${message.author.id}> changed the bot's banner`);
+        await loading.edit("banner updated ✅");
+      } catch (e: unknown) {
+        await loading.edit(`couldnt update it — make sure the bot account has nitro, thats required for banners. error: ${String(e)}`);
+      }
+      return;
+    }
+
+    case "setusername": {
+      if (!isAdmin(member)) { await message.reply("your not whitelisted loser"); return; }
+      const name = args.join(" ");
+      if (!name) { await message.reply("`.setusername <new name>`"); return; }
+      if (name.length < 2 || name.length > 32) { await message.reply("name has to be between 2 and 32 characters"); return; }
+      const loading = await message.reply("updating username...");
+      try {
+        await client.user!.setUsername(name);
+        await logInfo(guildId, "Username Updated", `<@${message.author.id}> changed the bot username to **${name}**`);
+        await loading.edit(`username is now **${name}** ✅`);
+      } catch (e: unknown) {
+        await loading.edit(`couldnt update it — discord rate limits username changes, wait a bit and try again. error: ${String(e)}`);
+      }
+      return;
+    }
+
+    case "setnickname":
+    case "setnick": {
+      if (!isAdmin(member)) { await message.reply("your not whitelisted loser"); return; }
+      const nick = args.join(" ") || null;
+      const loading = await message.reply(nick ? "updating nickname..." : "clearing nickname...");
+      try {
+        const botMember = message.guild!.members.cache.get(client.user!.id)
+          ?? await message.guild!.members.fetch(client.user!.id);
+        await botMember.setNickname(nick);
+        await logInfo(guildId, "Nickname Updated",
+          nick
+            ? `<@${message.author.id}> set the bot nickname to **${nick}** in this server`
+            : `<@${message.author.id}> cleared the bot nickname in this server`,
+        );
+        await loading.edit(nick ? `nickname is now **${nick}** ✅` : "nickname cleared ✅");
+      } catch (e: unknown) {
+        await loading.edit(`couldnt do it — ${String(e)}`);
+      }
+      return;
+    }
+
+    case "backup": {
+      if (!isAdmin(member)) { await message.reply("your not whitelisted loser"); return; }
+      const backup = createBackup();
+      const buffer = Buffer.from(JSON.stringify(backup, null, 2), "utf8");
+      await logInfo(guildId, "Backup Created", `<@${message.author.id}> created a data backup (${Object.keys(backup.files).length} files)`);
+      await message.reply({
+        embeds: [{ color: WHITE, description: `backed up **${Object.keys(backup.files).length}** files`, footer: { text: message.guild!.name }, timestamp: ts() }],
+        files: [new AttachmentBuilder(buffer, { name: `rixa-backup-${Date.now()}.json` })],
+      });
+      return;
+    }
+
+    case "restore": {
+      if (!isAdmin(member)) { await message.reply("your not whitelisted loser"); return; }
+      const attachment = message.attachments.first();
+      if (!attachment?.name.endsWith(".json")) { await message.reply("attach a valid `.json` backup file"); return; }
+      const loading = await message.reply("restoring...");
+      let raw: string;
+      try { raw = await fetch(attachment.url).then((r) => r.text()); } catch { await loading.edit({ content: "couldnt download the file" }); return; }
+      let backup: { files: Record<string, unknown> };
+      try { backup = JSON.parse(raw); } catch { await loading.edit({ content: "that file is unreadable" }); return; }
+      if (!backup.files || typeof backup.files !== "object") { await loading.edit({ content: "that doesnt look like a valid rixa backup" }); return; }
+      const restored = restoreBackup(backup);
+      await logInfo(guildId, "Backup Restored", `<@${message.author.id}> restored a backup (${restored} files)`);
+      await loading.edit({ embeds: [{ color: WHITE, description: `restored **${restored}** files`, footer: { text: message.guild!.name }, timestamp: ts() }] });
+      return;
+    }
+
+    case "help":
+    case "h":
+    case "commands": {
+      await message.reply(buildPage(0) as Parameters<typeof message.reply>[0]);
+      return;
+    }
+
+    default:
+      break;
+  }
+}
