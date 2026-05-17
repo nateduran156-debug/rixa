@@ -1,19 +1,14 @@
 import { getRobloxCookie } from "./storage.js";
 
 const TAG_GROUP_MAP: Record<string, string> = {
-  rixa:       "820648285",
-  fawn:       "820648285",
-  ghoul:      "820648285",
-  shy:        "820648285",
-  sorrow:     "820648285",
-  "ryuk tag": "517986217",
-  "bunni tag":"517986217",
+  rixa:   "820648285",
+  fawn:   "820648285",
+  ghoul:  "820648285",
+  shy:    "820648285",
+  sorrow: "820648285",
 };
 
-const TAG_ROLE_NAME_MAP: Record<string, string> = {
-  "ryuk tag":  "ryuk tag",
-  "bunni tag": "bunni tag",
-};
+const TAG_ROLE_NAME_MAP: Record<string, string> = {};
 
 async function getCsrfToken(): Promise<string | null> {
   try {
