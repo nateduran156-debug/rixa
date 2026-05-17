@@ -158,8 +158,8 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
       if (tagInput !== "no tag") {
         const result = await giveRobloxTagRole(username, tagInput);
         robloxNote = result.ok
-          ? `✅ roblox role **${tagInput}** assigned`
-          : `⚠️ roblox role failed: ${result.reason}`;
+          ? `roblox role **${tagInput}** assigned`
+          : `roblox role failed: ${result.reason}`;
       }
 
       await loading.edit({
@@ -564,7 +564,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
       const { gained } = await syncRankRoles(
         message.guild!, target.id, pts[target.id] ?? 0, getGuild(guildId).rankRoles ?? [],
       );
-      const promotionNote = gained.length > 0 ? `\n🎖️ rank${gained.length > 1 ? "s" : ""} unlocked: ${gained.join(", ")}` : "";
+      const promotionNote = gained.length > 0 ? `\nrank${gained.length > 1 ? "s" : ""} unlocked: ${gained.join(", ")}` : "";
 
       await logPoints(guildId, "Points Added",
         `<@${message.author.id}> gave **+${amount}** to <@${target.id}>`,
@@ -588,7 +588,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
       const { lost } = await syncRankRoles(
         message.guild!, target.id, pts[target.id] ?? 0, getGuild(guildId).rankRoles ?? [],
       );
-      const demotionNote = lost.length > 0 ? `\n📉 rank${lost.length > 1 ? "s" : ""} removed: ${lost.join(", ")}` : "";
+      const demotionNote = lost.length > 0 ? `\nrank${lost.length > 1 ? "s" : ""} removed: ${lost.join(", ")}` : "";
 
       await logPoints(guildId, "Points Removed",
         `<@${message.author.id}> removed **-${amount}** from <@${target.id}>`,
@@ -696,7 +696,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
         const buffer = await fetchImage(url);
         await client.user!.setAvatar(buffer);
         await logInfo(guildId, "Avatar Updated", `<@${message.author.id}> changed the bot's profile picture`);
-        await loading.edit("pfp updated ✅");
+        await loading.edit("pfp updated");
       } catch (e: unknown) {
         await loading.edit(`couldnt update it — ${String(e)}`);
       }
@@ -712,7 +712,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
         const buffer = await fetchImage(url);
         await (client.user as import("discord.js").ClientUser & { setBanner: (b: Buffer) => Promise<unknown> }).setBanner(buffer);
         await logInfo(guildId, "Banner Updated", `<@${message.author.id}> changed the bot's banner`);
-        await loading.edit("banner updated ✅");
+        await loading.edit("banner updated");
       } catch (e: unknown) {
         await loading.edit(`couldnt update it — make sure the bot account has nitro, thats required for banners. error: ${String(e)}`);
       }
@@ -728,7 +728,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
       try {
         await client.user!.setUsername(name);
         await logInfo(guildId, "Username Updated", `<@${message.author.id}> changed the bot username to **${name}**`);
-        await loading.edit(`username is now **${name}** ✅`);
+        await loading.edit(`username is now **${name}**`);
       } catch (e: unknown) {
         await loading.edit(`couldnt update it — discord rate limits username changes, wait a bit and try again. error: ${String(e)}`);
       }
@@ -749,7 +749,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
             ? `<@${message.author.id}> set the bot nickname to **${nick}** in this server`
             : `<@${message.author.id}> cleared the bot nickname in this server`,
         );
-        await loading.edit(nick ? `nickname is now **${nick}** ✅` : "nickname cleared ✅");
+        await loading.edit(nick ? `nickname is now **${nick}**` : "nickname cleared");
       } catch (e: unknown) {
         await loading.edit(`couldnt do it — ${String(e)}`);
       }
