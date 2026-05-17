@@ -1,0 +1,125 @@
+import { type Interaction } from "discord.js";
+import { getTickets, setVerified } from "../utils/storage.js";
+import { getUserByUsername, isInGroup } from "../utils/roblox.js";
+import {
+  showVerificationModal, openVerificationTicket,
+  openTagChannel, handleInChannelTagSelect, postTagReviewEmbed,
+  handleTagApprove, handleTagDeny, closeTicket,
+} from "./ticketHandler.js";
+import { buildPage, ALL_COMMANDS, PER_PAGE } from "../utils/help.js";
+import { getGuild } from "../utils/storage.js";
+
+export async function handleButton(interaction: Interaction) {
+  const customId = "customId" in interaction ? (interaction as { customId: string }).customId : "";
+
+  // help page nav buttons
+  if (customId.startsWith("help_nav::")) {
+    const i = interaction as import("discord.js").ButtonInteraction;
+    const [, pageStr, dir] = customId.split("::");
+    let page = parseInt(pageStr ?? "0", 10);
+    const maxPage = Math.ceil(ALL_COMMANDS.length / PER_PAGE) - 1;
+    if (dir === "prev" && page > 0) page--;
+    else if (dir === "next" && page < maxPage) page++;
+    return i.update(buildPage(page) as Parameters<typeof i.update>[0]).catch(() => {});
+  }
+
+  // modal submits
+  if (interaction.isModalSubmit()) {
+    const i = interaction as import("discord.js").ModalSubmitInteraction;
+
+    if (customId === "verification_username_modal") {
+      const robloxUsername = i.fields.getTextInputValue("roblox_username").trim();
+      if (!robloxUsername) return i.reply({ content: "please enter a roblox username.", ephemeral: true });
+      await i.deferReply({ ephemeral: true });
+      return openVerificationTicket(i, i.guild!, robloxUsername);
+    }
+
+    if (customId.startsWith("tag_ticket_modal::")) {
+      const tag            = customId.slice("tag_ticket_modal::".length);
+      const robloxUsername = i.fields.getTextInputValue("roblox_username").trim();
+      if (!robloxUsername) return i.reply({ content: "please enter a roblox username.", ephemeral: true });
+      return postTagReviewEmbed(i, tag, robloxUsername);
+    }
+    return;
+  }
+
+  // select menus
+  if (interaction.isStringSelectMenu()) {
+    const i = interaction as import("discord.js").StringSelectMenuInteraction;
+
+    if (customId === "ticket_select") {
+      const value = i.values[0];
+      if (value === "verification") return showVerificationModal(i);
+      if (value === "tag")          return openTagChannel(i);
+      return;
+    }
+
+    if (customId === "in_channel_tag_select") return handleInChannelTagSelect(i);
+    return;
+  }
+
+  // regular buttons
+  if (interaction.isButton()) {
+    const i = interaction as import("discord.js").ButtonInteraction;
+
+    if (customId === "open_ticket_verification") return showVerificationModal(i);
+    if (customId === "open_ticket_tag")          return openTagChannel(i);
+    if (customId === "ticket_tag_approve")       return handleTagApprove(i);
+    if (customId === "ticket_tag_deny")          return handleTagDeny(i);
+
+    if (customId === "resetall_confirm" || customId === "resetall_cancel") return;
+
+    const tickets = getTickets();
+    const ticket  = tickets[i.channelId];
+
+    if (customId === "ticket_close") {
+      if (!ticket) return i.reply({ content: "couldnt find a ticket for this channel.", ephemeral: true });
+      await i.deferReply();
+      return closeTicket(i, ticket, null);
+    }
+
+    if (customId === "ticket_kick") {
+      if (!ticket) return i.reply({ content: "couldnt find a ticket for this channel.", ephemeral: true });
+      const member = await i.guild?.members.fetch(ticket.userId).catch(() => null);
+      if (member) await member.kick("Removed from ticket").catch(() => {});
+      return i.reply({ content: `kicked <@${ticket.userId}>.` });
+    }
+
+    if (customId === "ticket_verify") {
+      if (!ticket) return i.reply({ content: "couldnt find a ticket for this channel.", ephemeral: true });
+      const guild    = i.guild!;
+      const settings = getGuild(guild.id);
+
+      if (!settings.verificationRole) {
+        return i.reply({ content: "no verification role set. run `.vset @role` first.", ephemeral: true });
+      }
+
+      const member = await guild.members.fetch(ticket.userId).catch(() => null);
+      if (!member) return i.reply({ content: "that user left the server.", ephemeral: true });
+
+      const requiredGroup = settings.groupId ?? "820648285";
+
+      if (ticket.robloxUsername) {
+        const robloxUser = await getUserByUsername(ticket.robloxUsername).catch(() => null);
+        if (robloxUser) {
+          const inGroup = await isInGroup(robloxUser.id, requiredGroup).catch(() => false);
+          if (!inGroup) {
+            return i.reply({
+              content: `**${ticket.robloxUsername}** isnt in the required group. they need to [join](https://www.roblox.com/communities/${requiredGroup}) first.`,
+              ephemeral: true,
+            });
+          }
+        }
+      }
+
+      await member.roles.add(settings.verificationRole).catch(() => {});
+      if (ticket.robloxUsername) setVerified(ticket.userId, ticket.robloxUsername);
+
+      await i.reply({
+        content: `verified <@${ticket.userId}>${ticket.robloxUsername ? ` as **${ticket.robloxUsername}**` : ""}.`,
+      });
+
+      return closeTicket(i, ticket, "User verified");
+    }
+  }
+}
