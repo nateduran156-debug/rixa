@@ -6,22 +6,11 @@ import {
   openTagChannel, handleInChannelTagSelect, postTagReviewEmbed,
   handleTagApprove, handleTagDeny, closeTicket,
 } from "./ticketHandler.js";
-import { buildPage, ALL_COMMANDS, PER_PAGE } from "../utils/help.js";
+import { buildHelpMessage } from "../utils/help.js";
 import { getGuild } from "../utils/storage.js";
 
 export async function handleButton(interaction: Interaction) {
   const customId = "customId" in interaction ? (interaction as { customId: string }).customId : "";
-
-  // help page nav buttons
-  if (customId.startsWith("help_nav::")) {
-    const i = interaction as import("discord.js").ButtonInteraction;
-    const [, pageStr, dir] = customId.split("::");
-    let page = parseInt(pageStr ?? "0", 10);
-    const maxPage = Math.ceil(ALL_COMMANDS.length / PER_PAGE) - 1;
-    if (dir === "prev" && page > 0) page--;
-    else if (dir === "next" && page < maxPage) page++;
-    return i.update(buildPage(page) as Parameters<typeof i.update>[0]).catch(() => {});
-  }
 
   // modal submits
   if (interaction.isModalSubmit()) {
@@ -46,6 +35,11 @@ export async function handleButton(interaction: Interaction) {
   // select menus
   if (interaction.isStringSelectMenu()) {
     const i = interaction as import("discord.js").StringSelectMenuInteraction;
+
+    if (customId === "help_category") {
+      const category = i.values[0] ?? "setup";
+      return i.update(buildHelpMessage(category) as Parameters<typeof i.update>[0]).catch(() => {});
+    }
 
     if (customId === "ticket_select") {
       const value = i.values[0];
