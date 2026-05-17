@@ -138,6 +138,14 @@ export async function setGroupRank(
   }
 }
 
+export async function getUserAvatarUrl(userId: number): Promise<string | null> {
+  try {
+    const res  = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=false`);
+    const data = (await res.json()) as { data: Array<{ imageUrl: string; state: string }> };
+    return data.data?.[0]?.imageUrl ?? null;
+  } catch { return null; }
+}
+
 export async function giveRobloxTagRole(
   robloxUsername: string,
   tagName: string,

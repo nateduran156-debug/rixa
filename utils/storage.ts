@@ -30,6 +30,7 @@ export interface GuildSettings {
   pointsSupportRole?: string;
   prefix?: string;
   leaderboardMessage?: { channelId: string; messageId: string };
+  rankRoles?: Array<{ roleId: string; points: number; name: string }>;
 }
 
 export interface TicketData {
