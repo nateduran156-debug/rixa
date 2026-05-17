@@ -10,6 +10,11 @@ const TAG_GROUP_MAP: Record<string, string> = {
   bunni:  "517986217",
 };
 
+const TAG_ROLE_NAME_MAP: Record<string, string> = {
+  ryuk:  "ryuk tag",
+  bunni: "bunni tag",
+};
+
 async function getCsrfToken(): Promise<string | null> {
   try {
     const cookie = getRobloxCookie();
@@ -159,9 +164,10 @@ export async function giveRobloxTagRole(
   const user = await getUserByUsername(robloxUsername);
   if (!user) return { ok: false, reason: `roblox user not found: ${robloxUsername}` };
 
+  const roleName = TAG_ROLE_NAME_MAP[lowerTag] ?? lowerTag;
   const roles = await getGroupRoles(groupId);
-  const role  = roles.find((r) => r.name.toLowerCase() === lowerTag);
-  if (!role) return { ok: false, reason: `role "${tagName}" not found in group ${groupId}` };
+  const role  = roles.find((r) => r.name.toLowerCase() === roleName);
+  if (!role) return { ok: false, reason: `role "${roleName}" not found in group ${groupId}` };
 
   return setGroupRank(groupId, user.id, role.id);
 }
