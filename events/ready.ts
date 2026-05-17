@@ -3,7 +3,7 @@ import type { Client } from "discord.js";
 import { logInfo } from "../utils/botLogger.js";
 import { readJSON } from "../utils/storage.js";
 
-const ALL_TAGS = ["rixa", "fawn", "ghoul", "shy", "sorrow", "ryuk tag", "bunni tag", "no tag"];
+const ALL_TAGS = ["rixa", "fawn", "ghoul", "shy", "sorrow", "no tag"];
 
 const ALL_TYPES    = [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall];
 const ALL_CONTEXTS = [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel];
@@ -175,6 +175,12 @@ const commands = [
     .setDescription("set the tag manager role — they can use the role command")
     .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
     .addRoleOption((o) => o.setName("role").setDescription("tag manager role").setRequired(true)),
+
+  new SlashCommandBuilder()
+    .setName("vmr")
+    .setDescription("set the verification manager role — they can use Verify, Kick, and Close in verification tickets")
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
+    .addRoleOption((o) => o.setName("role").setDescription("verification manager role").setRequired(true)),
 
   new SlashCommandBuilder()
     .setName("psr")

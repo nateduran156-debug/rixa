@@ -5,6 +5,7 @@ import {
 import {
   getGuild, setGuild, getWhitelist, setWhitelist, getPoints, savePoints,
   memberHasCommandRole, memberHasPointsRole, memberHasTagManagerRole, memberHasPSR,
+  memberHasVerificationManagerRole,
   removeVerified, setVerified, createBackup, restoreBackup, readJSON, writeJSON,
 } from "../utils/storage.js";
 import { getUserByUsername, getUserGroups, isInGroup, getGroupInfo, getGroupInfoBatch, getGroupRank, giveRobloxTagRole, getUserAvatarUrl } from "../utils/roblox.js";
@@ -135,12 +136,12 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
     case "role": {
       if (!admin() && !memberHasTagManagerRole(member, guildId)) return message.reply("your not whitelisted loser");
 
-      const ALL_TAGS = ["rixa", "fawn", "ghoul", "shy", "sorrow", "ryuk tag", "bunni tag", "no tag"];
+      const ALL_TAGS = ["rixa", "fawn", "ghoul", "shy", "sorrow", "no tag"];
       const username = args[0];
       const tagInput = args.slice(1).join(" ").toLowerCase();
 
       if (!username || !tagInput) {
-        return message.reply("`.role <roblox username> <tag>`\ntags: rixa, fawn, ghoul, shy, sorrow, ryuk tag, bunni tag, no tag");
+        return message.reply("`.role <roblox username> <tag>`\ntags: rixa, fawn, ghoul, shy, sorrow, no tag");
       }
       if (!ALL_TAGS.includes(tagInput)) {
         return message.reply(`\`${tagInput}\` isnt a valid tag. options: ${ALL_TAGS.map((t) => `\`${t}\``).join(", ")}`);
@@ -511,6 +512,17 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
       setGuild(guildId, { tagManagerRole: role.id });
       await logSetup(guildId, "Tag Manager Role Set", `<@${message.author.id}> set the tag manager role to <@&${role.id}>`);
       return message.reply(`<@&${role.id}> is now the tag manager role — they can use \`.role\``);
+    }
+
+    case "vmr": {
+      if (!admin()) return message.reply("your not whitelisted loser");
+      const roleArg = args[0];
+      if (!roleArg) return message.reply("`.vmr @role` or `.vmr <role id>`");
+      const role = message.mentions.roles.first() ?? message.guild!.roles.cache.get(roleArg.replace(/\D/g, ""));
+      if (!role) return message.reply("couldnt find that role — mention it or give me a valid id");
+      setGuild(guildId, { verificationManagerRole: role.id });
+      await logSetup(guildId, "Verification Manager Role Set", `<@${message.author.id}> set the verification manager role to <@&${role.id}>`);
+      return message.reply(`<@&${role.id}> is now the verification manager role — they can use the Verify, Kick, and Close buttons in verification tickets`);
     }
 
     case "psr": {
