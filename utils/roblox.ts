@@ -1,0 +1,159 @@
+import { getRobloxCookie } from "./storage.js";
+
+const TAG_GROUP_MAP: Record<string, string> = {
+  rixa:   "820648285",
+  fawn:   "820648285",
+  ghoul:  "820648285",
+  shy:    "820648285",
+  sorrow: "820648285",
+  ryuk:   "820648285",
+  bunni:  "820648285",
+};
+
+async function getCsrfToken(): Promise<string | null> {
+  try {
+    const cookie = getRobloxCookie();
+    const res = await fetch("https://auth.roblox.com/v2/logout", {
+      method: "POST",
+      headers: cookie ? { Cookie: `.ROBLOSECURITY=${cookie}` } : {},
+    });
+    return res.headers.get("x-csrf-token");
+  } catch { return null; }
+}
+
+export async function validateCookie(cookie: string): Promise<{ id: number; name: string } | null> {
+  try {
+    const res = await fetch("https://users.roblox.com/v1/users/authenticated", {
+      headers: { Cookie: `.ROBLOSECURITY=${cookie}` },
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as { id: number; name: string };
+  } catch { return null; }
+}
+
+export async function getUserByUsername(username: string): Promise<{ id: number; name: string } | null> {
+  try {
+    const res = await fetch("https://users.roblox.com/v1/usernames/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ usernames: [username], excludeBannedUsers: false }),
+    });
+    const data = (await res.json()) as { data: Array<{ id: number; name: string }> };
+    return data.data?.[0] ?? null;
+  } catch { return null; }
+}
+
+export async function getUserGroups(userId: number): Promise<Array<{ group: { id: number; name: string } }>> {
+  try {
+    const res  = await fetch(`https://groups.roblox.com/v2/users/${userId}/groups/roles`);
+    const data = (await res.json()) as { data: Array<{ group: { id: number; name: string } }> };
+    return data.data ?? [];
+  } catch { return []; }
+}
+
+export async function isInGroup(userId: number, groupId: string): Promise<boolean> {
+  const groups = await getUserGroups(userId);
+  return groups.some((g) => String(g.group.id) === String(groupId));
+}
+
+export async function getGroupRank(
+  userId: number,
+  groupId: string,
+): Promise<{ rankId: number; rankName: string } | null> {
+  try {
+    const res  = await fetch(`https://groups.roblox.com/v1/users/${userId}/groups/roles`);
+    const data = (await res.json()) as {
+      data: Array<{ group: { id: number }; role: { id: number; name: string; rank: number } }>;
+    };
+    const match = data.data?.find((g) => String(g.group.id) === String(groupId));
+    if (!match) return null;
+    return { rankId: match.role.rank, rankName: match.role.name };
+  } catch { return null; }
+}
+
+interface RobloxRole { id: number; name: string; rank: number; }
+
+export async function getGroupRoles(groupId: string): Promise<RobloxRole[]> {
+  try {
+    const cookie = getRobloxCookie();
+    const res    = await fetch(`https://groups.roblox.com/v1/groups/${groupId}/roles`, {
+      headers: cookie ? { Cookie: `.ROBLOSECURITY=${cookie}` } : {},
+    });
+    const data = (await res.json()) as { roles: RobloxRole[] };
+    return data.roles ?? [];
+  } catch { return []; }
+}
+
+export async function getGroupInfo(groupId: string): Promise<{ id: number; name: string } | null> {
+  try {
+    const res = await fetch(`https://groups.roblox.com/v1/groups/${groupId}`);
+    if (!res.ok) return null;
+    return (await res.json()) as { id: number; name: string };
+  } catch { return null; }
+}
+
+export async function getGroupInfoBatch(groupIds: string[]): Promise<Record<string, string>> {
+  const map: Record<string, string> = {};
+  const CHUNK = 10;
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  for (let i = 0; i < groupIds.length; i += CHUNK) {
+    const chunk = groupIds.slice(i, i + CHUNK);
+    await Promise.all(
+      chunk.map(async (id) => {
+        const info = await getGroupInfo(id).catch(() => null);
+        if (info?.name) map[String(id)] = info.name;
+      }),
+    );
+    if (i + CHUNK < groupIds.length) await sleep(300);
+  }
+  return map;
+}
+
+export async function setGroupRank(
+  groupId: string,
+  userId: number,
+  rankId: number,
+): Promise<{ ok: boolean; reason?: string }> {
+  const cookie = getRobloxCookie();
+  if (!cookie) return { ok: false, reason: "no cookie set — use /cookie to set one" };
+  try {
+    const csrf = await getCsrfToken();
+    if (!csrf) return { ok: false, reason: "couldnt get csrf token" };
+    const res = await fetch(`https://groups.roblox.com/v1/groups/${groupId}/users/${userId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: `.ROBLOSECURITY=${cookie}`,
+        "x-csrf-token": csrf,
+      },
+      body: JSON.stringify({ roleId: rankId }),
+    });
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { errors?: Array<{ message: string }> };
+      return { ok: false, reason: err?.errors?.[0]?.message ?? `status ${res.status}` };
+    }
+    return { ok: true };
+  } catch (e: unknown) {
+    return { ok: false, reason: String(e) };
+  }
+}
+
+export async function giveRobloxTagRole(
+  robloxUsername: string,
+  tagName: string,
+): Promise<{ ok: boolean; reason?: string }> {
+  const lowerTag = tagName.toLowerCase();
+  if (lowerTag === "no tag") return { ok: true };
+
+  const groupId = TAG_GROUP_MAP[lowerTag];
+  if (!groupId) return { ok: false, reason: `unknown tag: ${tagName}` };
+
+  const user = await getUserByUsername(robloxUsername);
+  if (!user) return { ok: false, reason: `roblox user not found: ${robloxUsername}` };
+
+  const roles = await getGroupRoles(groupId);
+  const role  = roles.find((r) => r.name.toLowerCase() === lowerTag);
+  if (!role) return { ok: false, reason: `role "${tagName}" not found in group ${groupId}` };
+
+  return setGroupRank(groupId, user.id, role.id);
+}
