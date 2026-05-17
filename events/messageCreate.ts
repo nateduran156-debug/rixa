@@ -135,12 +135,12 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
     case "role": {
       if (!admin() && !memberHasTagManagerRole(member, guildId)) return message.reply("your not whitelisted loser");
 
-      const ALL_TAGS = ["rixa", "fawn", "ghoul", "shy", "sorrow", "ryuk", "bunni", "no tag"];
+      const ALL_TAGS = ["rixa", "fawn", "ghoul", "shy", "sorrow", "ryuk tag", "bunni tag", "no tag"];
       const username = args[0];
       const tagInput = args.slice(1).join(" ").toLowerCase();
 
       if (!username || !tagInput) {
-        return message.reply("`.role <roblox username> <tag>`\ntags: rixa, fawn, ghoul, shy, sorrow, ryuk, bunni, no tag");
+        return message.reply("`.role <roblox username> <tag>`\ntags: rixa, fawn, ghoul, shy, sorrow, ryuk tag, bunni tag, no tag");
       }
       if (!ALL_TAGS.includes(tagInput)) {
         return message.reply(`\`${tagInput}\` isnt a valid tag. options: ${ALL_TAGS.map((t) => `\`${t}\``).join(", ")}`);

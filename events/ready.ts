@@ -3,7 +3,7 @@ import type { Client } from "discord.js";
 import { logInfo } from "../utils/botLogger.js";
 import { readJSON } from "../utils/storage.js";
 
-const ALL_TAGS = ["rixa", "fawn", "ghoul", "shy", "sorrow", "ryuk", "bunni", "no tag"];
+const ALL_TAGS = ["rixa", "fawn", "ghoul", "shy", "sorrow", "ryuk tag", "bunni tag", "no tag"];
 
 const ALL_TYPES    = [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall];
 const ALL_CONTEXTS = [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel];
