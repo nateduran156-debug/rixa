@@ -1,5 +1,5 @@
 {
-  "name": "@workspace/bot",
+  "name": "rixa-bot",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
     "discord.js": "^14.19.3"
   },
   "devDependencies": {
-    "@types/node": "catalog:",
-    "tsx": "catalog:"
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.2"
   }
 }
