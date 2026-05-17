@@ -155,7 +155,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
       if (!allowed) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
 
-      const ALL_TAGS = ["rixa", "fawn", "ghoul", "shy", "sorrow", "ryuk", "bunni", "no tag"];
+      const ALL_TAGS = ["rixa", "fawn", "ghoul", "shy", "sorrow", "ryuk tag", "bunni tag", "no tag"];
       const username = i.options.getString("roblox", true).trim();
       const tag      = i.options.getString("tag", true).toLowerCase();
       if (!ALL_TAGS.includes(tag)) {
