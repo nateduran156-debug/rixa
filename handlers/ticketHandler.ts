@@ -16,13 +16,13 @@ import { logTicket } from "../utils/botLogger.js";
 const WHITE = 0xffffff;
 
 const TAG_OPTIONS = [
-  { label: "Shy",    value: "shy",    description: "i h8 u but imy" },
-  { label: "Ghoul",  value: "ghoul",  description: "i h8 u but imy" },
-  { label: "Fawn",   value: "fawn",   description: "i h8 u but imy" },
-  { label: "Rixa",   value: "rixa",   description: "i h8 u but imy" },
-  { label: "Sorrow", value: "sorrow", description: "i h8 u but imy" },
-  { label: "Ryuk",   value: "ryuk",   description: "uh this is awkward i cant do this" },
-  { label: "Bunni",  value: "bunni",  description: "uh this is awkward i cant do this" },
+  { label: "Shy",    value: "shy",    description: "shy tag request" },
+  { label: "Ghoul",  value: "ghoul",  description: "ghoul tag request" },
+  { label: "Fawn",   value: "fawn",   description: "fawn tag request" },
+  { label: "Rixa",   value: "rixa",   description: "rixa tag request" },
+  { label: "Sorrow", value: "sorrow", description: "sorrow tag request" },
+  { label: "Ryuk",   value: "ryuk",   description: "ryuk tag request" },
+  { label: "Bunni",  value: "bunni",  description: "bunni tag request" },
 ];
 
 function ts() { return new Date().toISOString(); }
@@ -30,6 +30,15 @@ function ts() { return new Date().toISOString(); }
 function canManageTags(member: import("discord.js").GuildMember | null | undefined, guildId: string): boolean {
   if (!member) return false;
   return member.permissions.has(PermissionFlagsBits.Administrator) || memberHasTagManagerRole(member, guildId);
+}
+
+async function getDiscordAvatar(guild: Guild, userId: string): Promise<string | null> {
+  try {
+    const member = guild.members.cache.get(userId) ?? await guild.members.fetch(userId).catch(() => null);
+    return member?.displayAvatarURL({ size: 256 }) ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export async function sendTicketPanel(channel: TextChannel, type: "verification" | "tag" | "both") {
@@ -213,12 +222,7 @@ export async function openTagChannel(interaction: Interaction) {
 }
 
 export async function handleInChannelTagSelect(interaction: import("discord.js").StringSelectMenuInteraction) {
-  const tag      = interaction.values[0]!;
-  const guildId  = interaction.guild!.id;
-  const settings = getGuild(guildId);
-
-  // check if they can pick a tag
-  const member = interaction.member as import("discord.js").GuildMember | null;
+  const tag = interaction.values[0]!;
 
   const modal = new ModalBuilder().setCustomId(`tag_ticket_modal::${tag}`).setTitle(`${tag} tag request`);
   modal.addComponents(
@@ -242,8 +246,8 @@ export async function postTagReviewEmbed(
   const ticket    = channelId ? tickets[channelId] : undefined;
   if (!ticket) { await interaction.reply({ content: "couldnt find the ticket for this channel.", ephemeral: true }); return; }
 
-  ticket.requestedTag    = tag;
-  ticket.robloxUsername  = robloxUsername;
+  ticket.requestedTag   = tag;
+  ticket.robloxUsername = robloxUsername;
   setTicket(ticket.channelId, ticket);
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -296,8 +300,8 @@ export async function handleTagApprove(interaction: import("discord.js").ButtonI
   if (robloxUsername && tag !== "no tag") {
     const result = await giveRobloxTagRole(robloxUsername, tag);
     robloxNote = result.ok
-      ? `✅ roblox role **${tag}** given to \`${robloxUsername}\``
-      : `⚠️ roblox role failed: ${result.reason}`;
+      ? `roblox role **${tag}** given to \`${robloxUsername}\``
+      : `roblox role failed: ${result.reason}`;
   }
 
   await interaction.reply({
@@ -314,6 +318,7 @@ export async function handleTagApprove(interaction: import("discord.js").ButtonI
   ]);
 
   setTimeout(async () => {
+    await sendTagLog(interaction.client, interaction.guild!, ticket);
     await postCloseLog(interaction.client, interaction.guild!, ticket);
     deleteTicket(ticket.channelId);
     const ch = interaction.guild?.channels.cache.get(ticket.channelId);
@@ -343,6 +348,7 @@ export async function handleTagDeny(interaction: import("discord.js").ButtonInte
   await logTicket(interaction.guild!.id, "Tag Denied", `<@${interaction.user.id}> denied a tag request`);
 
   setTimeout(async () => {
+    await sendTagLog(interaction.client, interaction.guild!, ticket);
     await postCloseLog(interaction.client, interaction.guild!, ticket);
     deleteTicket(ticket.channelId);
     const ch = interaction.guild?.channels.cache.get(ticket.channelId);
@@ -400,8 +406,8 @@ export async function handleTagManagerMessage(message: Message) {
     if (robloxUsername && tag !== "no tag") {
       const result = await giveRobloxTagRole(robloxUsername, tag);
       robloxNote = result.ok
-        ? `✅ roblox role **${tag}** given to \`${robloxUsername}\``
-        : `⚠️ roblox role failed: ${result.reason}`;
+        ? `roblox role **${tag}** given to \`${robloxUsername}\``
+        : `roblox role failed: ${result.reason}`;
     }
 
     await (message.channel as TextChannel).send({
@@ -427,6 +433,7 @@ export async function handleTagManagerMessage(message: Message) {
       embeds: [{ color: WHITE, description: `tag request denied by <@${message.author.id}>.`, timestamp: ts() }],
     });
     await logTicket(guildId, "Tag Denied (Text)", `<@${message.author.id}> denied a tag request by typing`);
+    await sendTagLog(message.client, message.guild!, ticket);
   }
 
   setTimeout(async () => {
@@ -437,6 +444,9 @@ export async function handleTagManagerMessage(message: Message) {
   }, 3000);
 }
 
+const GREEN = 0x57f287;
+const RED   = 0xed4245;
+
 async function runGroupCheck(channel: TextChannel, robloxUsername: string, guildId: string, client: Client) {
   const settings      = getGuild(guildId);
   const flaggedGroups = settings.flaggedGroups ?? [];
@@ -444,7 +454,7 @@ async function runGroupCheck(channel: TextChannel, robloxUsername: string, guild
 
   const user = await getUserByUsername(robloxUsername).catch(() => null);
   if (!user) {
-    await channel.send({ embeds: [{ color: WHITE, description: `couldnt find **${robloxUsername}** on roblox.`, timestamp: ts() }] });
+    await channel.send({ embeds: [{ color: RED, description: `couldnt find **${robloxUsername}** on roblox.`, timestamp: ts() }] });
     return;
   }
 
@@ -452,12 +462,15 @@ async function runGroupCheck(channel: TextChannel, robloxUsername: string, guild
   const inMain   = await isInGroup(user.id, requiredGid).catch(() => false);
   const flagHits = groups.filter((g) => flaggedGroups.includes(String(g.group.id)));
 
+  const clearToVerify = inMain && flagHits.length === 0;
+  const statusColor   = clearToVerify ? GREEN : RED;
+
   const groupList = groups.length > 0
     ? groups.map((g) => `• [${g.group.name}](https://www.roblox.com/groups/${g.group.id})`).join("\n")
     : "• none";
 
   const embeds: object[] = [{
-    color: WHITE,
+    color: statusColor,
     description: `**${user.name}**\n\n**groups**\n${groupList}`,
     footer: { text: client.user?.username ?? "bot" },
     timestamp: ts(),
@@ -465,24 +478,24 @@ async function runGroupCheck(channel: TextChannel, robloxUsername: string, guild
 
   if (flagHits.length > 0) {
     embeds.push({
-      color: WHITE,
+      color: RED,
       description: `**${user.name}** is in flagged groups — ask them to leave:\n\n${flagHits.map((m) => `• [${m.group.name}](https://www.roblox.com/groups/${m.group.id})`).join("\n")}`,
       timestamp: ts(),
     });
   }
 
   embeds.push({
-    color: WHITE,
+    color: statusColor,
     description: inMain
-      ? `✓ **${user.name}** is in the main group and good to verify\n\n**group id:** \`${requiredGid}\`\n**link:** [join here](https://www.roblox.com/communities/${requiredGid})`
-      : `✗ **${user.name}** isnt in the main group\n\n**group id:** \`${requiredGid}\`\n**link:** [join here](https://www.roblox.com/communities/${requiredGid})`,
+      ? `**${user.name}** is in the main group and good to verify\n\n**group id:** \`${requiredGid}\`\n**link:** [join here](https://www.roblox.com/communities/${requiredGid})`
+      : `**${user.name}** is not in the main group\n\n**group id:** \`${requiredGid}\`\n**link:** [join here](https://www.roblox.com/communities/${requiredGid})`,
     timestamp: ts(),
   });
 
   await channel.send({ embeds });
 }
 
-async function sendTagLog(client: Client, guild: import("discord.js").Guild, ticket: TicketData) {
+async function sendTagLog(client: Client, guild: Guild, ticket: TicketData) {
   const settings = getGuild(guild.id);
   const logChId  = settings.tagLogChannel ?? settings.logChannel;
   if (!logChId) return;
@@ -490,22 +503,31 @@ async function sendTagLog(client: Client, guild: import("discord.js").Guild, tic
   const logCh = guild.channels.cache.get(logChId) as TextChannel | undefined;
   if (!logCh) return;
 
+  const avatarUrl  = await getDiscordAvatar(guild, ticket.userId);
+  const transcript = generateTranscript(ticket);
+
+  const embed: Record<string, unknown> = {
+    color: WHITE,
+    title: ticket.status === "approved" ? "Tag Approved" : "Tag Denied",
+    description: [
+      `**User:** <@${ticket.userId}>`,
+      `**User ID:** \`${ticket.userId}\``,
+      `**Roblox:** \`${ticket.robloxUsername ?? "unknown"}\``,
+      `**Tag:** \`${ticket.requestedTag ?? "?"}\``,
+      ticket.approvedBy ? `**Approved By:** ${ticket.approvedBy}` : null,
+      ticket.closedBy && ticket.status === "denied" ? `**Denied By:** ${ticket.closedBy}` : null,
+    ].filter(Boolean).join("\n"),
+    timestamp: ts(),
+  };
+  if (avatarUrl) embed["thumbnail"] = { url: avatarUrl };
+
   await logCh.send({
-    embeds: [{
-      color: WHITE,
-      title: "Tag Approved",
-      description: [
-        `**User:** <@${ticket.userId}>`,
-        `**Roblox:** ${ticket.robloxUsername ?? "unknown"}`,
-        `**Tag:** \`${ticket.requestedTag ?? "?"}\``,
-        ticket.approvedBy ? `**Approved By:** ${ticket.approvedBy}` : null,
-      ].filter(Boolean).join("\n"),
-      timestamp: ts(),
-    }],
+    embeds: [embed],
+    files: [{ attachment: transcript, name: `tag-transcript-${ticket.channelId}.html` }],
   }).catch(() => {});
 }
 
-async function postCloseLog(client: Client, guild: import("discord.js").Guild, ticket: TicketData) {
+async function postCloseLog(client: Client, guild: Guild, ticket: TicketData) {
   const settings   = getGuild(guild.id);
   const logChId    = settings.logChannel;
   const transcript = generateTranscript(ticket);
@@ -514,20 +536,26 @@ async function postCloseLog(client: Client, guild: import("discord.js").Guild, t
   const logCh = guild.channels.cache.get(logChId) as TextChannel | undefined;
   if (!logCh) return;
 
+  const avatarUrl = await getDiscordAvatar(guild, ticket.userId);
+
+  const embed: Record<string, unknown> = {
+    color: WHITE,
+    title: "Ticket Closed",
+    description: [
+      `**User:** <@${ticket.userId}>`,
+      `**User ID:** \`${ticket.userId}\``,
+      `**Type:** ${ticket.type}`,
+      ticket.robloxUsername ? `**Roblox:** \`${ticket.robloxUsername}\`` : null,
+      ticket.requestedTag   ? `**Tag:** \`${ticket.requestedTag}\`` : null,
+      `**Status:** ${ticket.status ?? "closed"}`,
+      ticket.closedBy ? `**Closed By:** ${ticket.closedBy}` : null,
+    ].filter(Boolean).join("\n"),
+    timestamp: ts(),
+  };
+  if (avatarUrl) embed["thumbnail"] = { url: avatarUrl };
+
   await logCh.send({
-    embeds: [{
-      color: WHITE,
-      title: "Ticket Closed",
-      description: [
-        `**User:** <@${ticket.userId}>`,
-        `**Type:** ${ticket.type}`,
-        ticket.robloxUsername ? `**Roblox:** ${ticket.robloxUsername}` : null,
-        ticket.requestedTag   ? `**Tag:** \`${ticket.requestedTag}\`` : null,
-        `**Status:** ${ticket.status ?? "closed"}`,
-        ticket.closedBy ? `**Closed By:** ${ticket.closedBy}` : null,
-      ].filter(Boolean).join("\n"),
-      timestamp: ts(),
-    }],
+    embeds: [embed],
     files: [{ attachment: transcript, name: `transcript-${ticket.channelId}.html` }],
   }).catch(() => {});
 }
