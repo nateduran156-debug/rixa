@@ -189,6 +189,32 @@ export async function getUserAvatarUrl(userId: number): Promise<string | null> {
   } catch { return null; }
 }
 
+export async function kickFromGroup(
+  groupId: string,
+  userId: number,
+): Promise<{ ok: boolean; reason?: string }> {
+  const cookie = getRobloxCookie();
+  if (!cookie) return { ok: false, reason: "no cookie set" };
+  try {
+    const csrf = await getCsrfToken();
+    if (!csrf) return { ok: false, reason: "couldn't retrieve CSRF token" };
+    const res = await fetch(`https://groups.roblox.com/v1/groups/${groupId}/users/${userId}`, {
+      method: "DELETE",
+      headers: {
+        Cookie: `.ROBLOSECURITY=${cookie}`,
+        "x-csrf-token": csrf,
+      },
+    });
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { errors?: Array<{ message: string }> };
+      return { ok: false, reason: err?.errors?.[0]?.message ?? `status ${res.status}` };
+    }
+    return { ok: true };
+  } catch (e) { return { ok: false, reason: String(e) }; }
+}
+
+const JOIN_FIRST_TAGS = new Set(["ryuk tag", "bunni tag", "bunni knife"]);
+
 export async function giveRobloxTagRole(
   robloxUsername: string,
   tagName: string,
@@ -202,10 +228,19 @@ export async function giveRobloxTagRole(
   const user = await getUserByUsername(robloxUsername);
   if (!user) return { ok: false, reason: `roblox user not found: ${robloxUsername}` };
 
+  if (JOIN_FIRST_TAGS.has(lowerTag)) {
+    await acceptJoinRequest(groupId, user.id).catch(() => {});
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+
   const roleName = TAG_ROLE_NAME_MAP[lowerTag] ?? lowerTag;
   const roles = await getGroupRoles(groupId);
   const role  = roles.find((r) => r.name.toLowerCase() === roleName);
-  if (!role) return { ok: false, reason: `role "${roleName}" not found in group ${groupId}` };
+  if (!role) return { ok: false, reason: `role "${roleName}" not found in group ${groupId} — make sure the role name in the group matches exactly` };
 
-  return setGroupRank(groupId, user.id, role.id);
+  const result = await setGroupRank(groupId, user.id, role.id);
+  if (!result.ok && JOIN_FIRST_TAGS.has(lowerTag)) {
+    return { ok: false, reason: `couldn't rank up ${robloxUsername} — make sure they've requested to join the group first, then use .accept to bring them in before approving` };
+  }
+  return result;
 }
