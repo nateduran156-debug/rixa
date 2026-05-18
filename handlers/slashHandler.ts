@@ -146,7 +146,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
         ? (isOwner(i) || (wl["bot"] ?? []).includes(i.user.id))
         : (!!m && (admin(i) || memberHasTagManagerRole(m, guildId)));
 
-      if (!allowed) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!allowed) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
 
       const ALL_TAGS = ["rixa", "fawn", "ghoul", "shy", "sorrow", "no tag"];
       const username = i.options.getString("roblox", true).trim();
@@ -270,9 +270,9 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── flag ─────────────────────────────────────────────────────────────────
     case "flag": {
-      if (!mgGuild(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!mgGuild(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const gid = i.options.getString("groupid", true).trim();
-      if (isNaN(Number(gid))) return i.reply({ content: "need a valid group id", ephemeral: true });
+      if (isNaN(Number(gid))) return i.reply({ content: "please provide a valid group id", ephemeral: true });
       if (ALWAYS_FLAGGED_IDS.has(gid)) return i.reply({ content: `\`${gid}\` is already in the global flag list`, ephemeral: true });
       const s       = getGuild(guildId);
       const flagged = s.flaggedGroups ?? [];
@@ -289,7 +289,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── unflag ───────────────────────────────────────────────────────────────
     case "unflag": {
-      if (!mgGuild(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!mgGuild(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const gid = i.options.getString("groupid", true).trim();
       if (ALWAYS_FLAGGED_IDS.has(gid)) return i.reply({ content: `\`${gid}\` is in the global list and can't be unflagged`, ephemeral: true });
       const s       = getGuild(guildId);
@@ -331,7 +331,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── verify ───────────────────────────────────────────────────────────────
     case "verify": {
-      if (!mgRoles(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!mgRoles(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const target     = i.options.getUser("user", true);
       const robloxName = i.options.getString("roblox") ?? null;
       const s          = getGuild(guildId);
@@ -349,7 +349,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── unverify ─────────────────────────────────────────────────────────────
     case "unverify": {
-      if (!mgRoles(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!mgRoles(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const target = i.options.getUser("user", true);
       const s      = getGuild(guildId);
       const member = await i.guild?.members.fetch(target.id).catch(() => null);
@@ -361,7 +361,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── setupticket ──────────────────────────────────────────────────────────
     case "setupticket": {
-      if (!mgGuild(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!mgGuild(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const ch   = i.options.getChannel("channel", true) as TextChannel;
       const type = (i.options.getString("type") ?? "both") as "verification" | "tag" | "both";
       await i.deferReply();
@@ -376,7 +376,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── logset ───────────────────────────────────────────────────────────────
     case "logset": {
-      if (!mgGuild(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!mgGuild(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const ch = i.options.getChannel("channel", true) as TextChannel;
       setGuild(guildId, { logChannel: ch.id });
       await logSetup(guildId, "Log Channel Set", `<@${i.user.id}> set the log channel to <#${ch.id}>`);
@@ -385,7 +385,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── taglogset ────────────────────────────────────────────────────────────
     case "taglogset": {
-      if (!mgGuild(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!mgGuild(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const ch = i.options.getChannel("channel", true) as TextChannel;
       setGuild(guildId, { tagLogChannel: ch.id });
       await logSetup(guildId, "Tag Log Channel Set", `<@${i.user.id}> set the tag log channel to <#${ch.id}>`);
@@ -394,7 +394,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── botlogset ────────────────────────────────────────────────────────────
     case "botlogset": {
-      if (!admin(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!admin(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const ch = i.options.getChannel("channel", true) as TextChannel;
       setGuild(guildId, { botLogChannel: ch.id });
       await logInfo(guildId, "Bot Log Channel Set",
@@ -405,7 +405,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── vset ─────────────────────────────────────────────────────────────────
     case "vset": {
-      if (!mgGuild(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!mgGuild(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const role = i.options.getRole("role", true);
       setGuild(guildId, { verificationRole: role.id });
       await logSetup(guildId, "Verification Role Set", `<@${i.user.id}> set the verification role to <@&${role.id}>`);
@@ -414,9 +414,9 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── gid ──────────────────────────────────────────────────────────────────
     case "gid": {
-      if (!mgGuild(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!mgGuild(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const groupId = i.options.getString("groupid", true).trim();
-      if (isNaN(Number(groupId))) return i.reply({ content: "need a valid roblox group id", ephemeral: true });
+      if (isNaN(Number(groupId))) return i.reply({ content: "please provide a valid Roblox group id", ephemeral: true });
       setGuild(guildId, { groupId });
       await logSetup(guildId, "Group ID Set", `<@${i.user.id}> set the group ID to \`${groupId}\``);
       return i.reply({ content: `group id set to \`${groupId}\`` });
@@ -424,7 +424,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── prefix ───────────────────────────────────────────────────────────────
     case "prefix": {
-      if (!admin(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!admin(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const newPrefix = i.options.getString("prefix", true);
       if (newPrefix.length > 5) return i.reply({ content: "keep it under 5 characters", ephemeral: true });
       setGuild(guildId, { prefix: newPrefix });
@@ -434,7 +434,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── wl ───────────────────────────────────────────────────────────────────
     case "wl": {
-      if (!admin(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!admin(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const sub = i.options.getSubcommand();
       if (sub === "bot") {
         const t      = i.options.getUser("user", true);
@@ -462,7 +462,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── wlrole ───────────────────────────────────────────────────────────────
     case "wlrole": {
-      if (!mgGuild(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!mgGuild(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const role    = i.options.getRole("role", true);
       const cmdName = i.options.getString("command")?.toLowerCase() ?? null;
       const s       = getGuild(guildId);
@@ -485,7 +485,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── wlp ──────────────────────────────────────────────────────────────────
     case "wlp": {
-      if (!admin(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!admin(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const role = i.options.getRole("role", true);
       const s    = getGuild(guildId);
       if (s.pointsRole === role.id) return i.reply({ content: `<@&${role.id}> already manages points`, ephemeral: true });
@@ -496,7 +496,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── tmr ──────────────────────────────────────────────────────────────────
     case "tmr": {
-      if (!admin(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!admin(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const role = i.options.getRole("role", true);
       setGuild(guildId, { tagManagerRole: role.id });
       await logSetup(guildId, "Tag Manager Role Set", `<@${i.user.id}> set the tag manager role to <@&${role.id}>`);
@@ -505,7 +505,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── vmr ──────────────────────────────────────────────────────────────────
     case "vmr": {
-      if (!admin(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!admin(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const role = i.options.getRole("role", true);
       setGuild(guildId, { verificationManagerRole: role.id });
       await logSetup(guildId, "Verification Manager Role Set", `<@${i.user.id}> set the verification manager role to <@&${role.id}>`);
@@ -514,7 +514,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── psr ──────────────────────────────────────────────────────────────────
     case "psr": {
-      if (!admin(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!admin(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const role = i.options.getRole("role", true);
       setGuild(guildId, { pointsSupportRole: role.id });
       await logSetup(guildId, "Points Support Role Set", `<@${i.user.id}> set the points support role to <@&${role.id}>`);
@@ -523,7 +523,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── whitelisted ──────────────────────────────────────────────────────────
     case "whitelisted": {
-      if (!admin(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!admin(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const wlData       = getWhitelist();
       const s            = getGuild(guildId);
       const lines: string[] = [];
@@ -548,7 +548,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── rankup ───────────────────────────────────────────────────────────────
     case "rankup": {
-      if (!hasFullAccess(i, "rankup")) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!hasFullAccess(i, "rankup")) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const target = i.options.getUser("user", true);
       const amount = i.options.getInteger("amount") ?? 1;
       await i.deferReply();
@@ -567,7 +567,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── removepoints ─────────────────────────────────────────────────────────
     case "removepoints": {
-      if (!hasFullAccess(i, "remove")) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!hasFullAccess(i, "remove")) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const target = i.options.getUser("user", true);
       const amount = i.options.getInteger("amount") ?? 1;
       await i.deferReply();
@@ -588,7 +588,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
     case "resetall": {
       const m = getMember(i);
       const hasAccess = admin(i) || (m && memberHasPointsRole(m, guildId));
-      if (!hasAccess) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!hasAccess) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder().setCustomId("resetall_confirm").setLabel("reset all points").setStyle(ButtonStyle.Danger),
         new ButtonBuilder().setCustomId("resetall_cancel").setLabel("cancel").setStyle(ButtonStyle.Secondary),
@@ -632,7 +632,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
       const m      = getMember(i);
       if (target && target.id !== i.user.id) {
         if (!hasFullAccess(i, "check") && !(m && memberHasPSR(m, guildId))) {
-          return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+          return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
         }
       }
       const subject = target ?? i.user;
@@ -654,11 +654,11 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── addrank ──────────────────────────────────────────────────────────────
     case "addrank": {
-      if (!mgGuild(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!mgGuild(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const roleId   = i.options.getString("roleid", true).replace(/\D/g, "");
       const points   = i.options.getInteger("points", true);
       const rankName = i.options.getString("name") ?? null;
-      if (!roleId) return i.reply({ content: "need a valid role id", ephemeral: true });
+      if (!roleId) return i.reply({ content: "please provide a valid role id", ephemeral: true });
       const role = i.guild?.roles.cache.get(roleId);
       if (!role) return i.reply({ content: `couldn't find a role with id \`${roleId}\``, ephemeral: true });
       const s     = getGuild(guildId);
@@ -673,7 +673,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── removerank ───────────────────────────────────────────────────────────
     case "removerank": {
-      if (!mgGuild(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!mgGuild(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const roleId = i.options.getString("roleid", true).replace(/\D/g, "");
       const s      = getGuild(guildId);
       const ranks  = s.rankRoles ?? [];
@@ -696,7 +696,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── setstatus ────────────────────────────────────────────────────────────
     case "setstatus": {
-      if (!admin(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!admin(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const text = i.options.getString("text", true);
       if (text.toLowerCase() === "clear") {
         i.client.user?.setPresence({ activities: [] });
@@ -710,7 +710,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── setpresence ──────────────────────────────────────────────────────────
     case "setpresence": {
-      if (!admin(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!admin(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const status = i.options.getString("status", true) as "online" | "idle" | "dnd" | "invisible";
       i.client.user?.setPresence({ status });
       await logInfo(guildId, "Presence Updated", `<@${i.user.id}> set bot presence to **${status}**`);
@@ -719,9 +719,9 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── setavatar ────────────────────────────────────────────────────────────
     case "setavatar": {
-      if (!admin(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!admin(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const url        = i.options.getString("url") ?? i.options.getAttachment("image")?.url;
-      if (!url) return i.reply({ content: "give me a url or attach an image", ephemeral: true });
+      if (!url) return i.reply({ content: "please provide a url or attach an image", ephemeral: true });
       await i.deferReply();
       try {
         const buffer = await fetchImage(url);
@@ -735,9 +735,9 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── setbanner ────────────────────────────────────────────────────────────
     case "setbanner": {
-      if (!admin(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!admin(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const url = i.options.getString("url") ?? i.options.getAttachment("image")?.url;
-      if (!url) return i.reply({ content: "give me a url or attach an image", ephemeral: true });
+      if (!url) return i.reply({ content: "please provide a url or attach an image", ephemeral: true });
       await i.deferReply();
       try {
         const buffer = await fetchImage(url);
@@ -751,7 +751,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── setusername ──────────────────────────────────────────────────────────
     case "setusername": {
-      if (!admin(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!admin(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const name = i.options.getString("name", true);
       if (name.length < 2 || name.length > 32) return i.reply({ content: "name has to be between 2 and 32 characters", ephemeral: true });
       await i.deferReply();
@@ -766,7 +766,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── setnickname ──────────────────────────────────────────────────────────
     case "setnickname": {
-      if (!admin(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!admin(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const nick = i.options.getString("name") ?? null;
       await i.deferReply();
       try {
@@ -786,7 +786,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── backup ───────────────────────────────────────────────────────────────
     case "backup": {
-      if (!admin(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!admin(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       await i.deferReply();
       const backup = createBackup();
       const buffer = Buffer.from(JSON.stringify(backup, null, 2), "utf8");
@@ -799,7 +799,7 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
 
     // ── restore ──────────────────────────────────────────────────────────────
     case "restore": {
-      if (!admin(i)) return i.reply({ content: "you're not whitelisted for that", ephemeral: true });
+      if (!admin(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
       const attachment = i.options.getAttachment("file", true);
       if (!attachment.name.endsWith(".json")) return i.reply({ content: "attach a valid `.json` backup file", ephemeral: true });
       await i.deferReply();

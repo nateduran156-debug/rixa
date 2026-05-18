@@ -66,7 +66,7 @@ export async function handleButton(interaction: Interaction) {
     const ticket  = tickets[i.channelId];
 
     if (customId === "ticket_close") {
-      if (!ticket) return i.reply({ content: "couldnt find a ticket for this channel.", ephemeral: true });
+      if (!ticket) return i.reply({ content: "couldn't find a ticket for this channel.", ephemeral: true });
       const clicker = i.member as import("discord.js").GuildMember | null;
       const isVMR = clicker && memberHasVerificationManagerRole(clicker, i.guild!.id);
       if (!isVMR) return i.reply({ content: "you don't have permission to close tickets.", ephemeral: true });
@@ -75,7 +75,7 @@ export async function handleButton(interaction: Interaction) {
     }
 
     if (customId === "ticket_kick") {
-      if (!ticket) return i.reply({ content: "couldnt find a ticket for this channel.", ephemeral: true });
+      if (!ticket) return i.reply({ content: "couldn't find a ticket for this channel.", ephemeral: true });
       const clicker = i.member as import("discord.js").GuildMember | null;
       const isVMR = clicker && memberHasVerificationManagerRole(clicker, i.guild!.id);
       if (!isVMR) return i.reply({ content: "you don't have permission to kick from tickets.", ephemeral: true });
@@ -85,7 +85,7 @@ export async function handleButton(interaction: Interaction) {
     }
 
     if (customId === "ticket_verify") {
-      if (!ticket) return i.reply({ content: "couldnt find a ticket for this channel.", ephemeral: true });
+      if (!ticket) return i.reply({ content: "couldn't find a ticket for this channel.", ephemeral: true });
       const guild    = i.guild!;
       const settings = getGuild(guild.id);
       const clicker  = i.member as import("discord.js").GuildMember | null;
@@ -107,7 +107,7 @@ export async function handleButton(interaction: Interaction) {
           const inGroup = await isInGroup(robloxUser.id, requiredGroup).catch(() => false);
           if (!inGroup) {
             return i.reply({
-              content: `**${ticket.robloxUsername}** isnt in the required group. they need to [join](https://www.roblox.com/communities/${requiredGroup}) first.`,
+              content: `**${ticket.robloxUsername}** isn't in the required group. they need to [join](https://www.roblox.com/communities/${requiredGroup}) first.`,
               ephemeral: true,
             });
           }

@@ -8,10 +8,24 @@ import {
   getGuild, getTickets, setTicket, deleteTicket, addTicketMessage, memberHasTagManagerRole, type TicketData,
 } from "../utils/storage.js";
 import {
-  getUserByUsername, getUserGroups, isInGroup, giveRobloxTagRole,
+  getUserByUsername, getUserGroups, isInGroup, giveRobloxTagRole, kickFromGroup,
 } from "../utils/roblox.js";
 import { generateTranscript } from "../utils/transcript.js";
 import { logTicket } from "../utils/botLogger.js";
+
+const KICK_ON_DENY_TAGS: Record<string, string> = {
+  "ryuk tag":    "517986217",
+  "bunni tag":   "517986217",
+  "bunni knife": "682986091",
+};
+
+async function kickDeniedUser(robloxUsername: string, tag: string): Promise<void> {
+  const groupId = KICK_ON_DENY_TAGS[tag.toLowerCase()];
+  if (!groupId || !robloxUsername) return;
+  const user = await getUserByUsername(robloxUsername).catch(() => null);
+  if (!user) return;
+  await kickFromGroup(groupId, user.id).catch(() => {});
+}
 
 const WHITE = 0xffffff;
 
@@ -255,7 +269,7 @@ export async function postTagReviewEmbed(
   const tickets   = getTickets();
   const channelId = interaction.channelId ?? "";
   const ticket    = channelId ? tickets[channelId] : undefined;
-  if (!ticket) { await interaction.reply({ content: "couldnt find the ticket for this channel.", ephemeral: true }); return; }
+  if (!ticket) { await interaction.reply({ content: "couldn't find the ticket for this channel.", ephemeral: true }); return; }
 
   ticket.requestedTag   = tag;
   ticket.robloxUsername = robloxUsername;
@@ -299,10 +313,10 @@ export async function postTagReviewEmbed(
 export async function handleTagApprove(interaction: import("discord.js").ButtonInteraction): Promise<void> {
   const tickets = getTickets();
   const ticket  = tickets[interaction.channelId];
-  if (!ticket) { await interaction.reply({ content: "cant find this ticket.", ephemeral: true }); return; }
+  if (!ticket) { await interaction.reply({ content: "can't find this ticket.", ephemeral: true }); return; }
 
   if (!canManageTags(interaction.member as import("discord.js").GuildMember | null, interaction.guild!.id)) {
-    await interaction.reply({ content: "you dont have permission to approve tags.", ephemeral: true }); return;
+    await interaction.reply({ content: "you don't have permission to approve tags.", ephemeral: true }); return;
   }
 
   const tag            = ticket.requestedTag ?? "no tag";
@@ -348,10 +362,10 @@ export async function handleTagApprove(interaction: import("discord.js").ButtonI
 export async function handleTagDeny(interaction: import("discord.js").ButtonInteraction): Promise<void> {
   const tickets = getTickets();
   const ticket  = tickets[interaction.channelId];
-  if (!ticket) { await interaction.reply({ content: "cant find this ticket.", ephemeral: true }); return; }
+  if (!ticket) { await interaction.reply({ content: "can't find this ticket.", ephemeral: true }); return; }
 
   if (!canManageTags(interaction.member as import("discord.js").GuildMember | null, interaction.guild!.id)) {
-    await interaction.reply({ content: "you dont have permission to deny tags.", ephemeral: true }); return;
+    await interaction.reply({ content: "you don't have permission to deny tags.", ephemeral: true }); return;
   }
 
   ticket.status     = "denied";
@@ -359,6 +373,8 @@ export async function handleTagDeny(interaction: import("discord.js").ButtonInte
   ticket.closedBy   = interaction.user.username;
   ticket.closedById = interaction.user.id;
   setTicket(ticket.channelId, ticket);
+
+  await kickDeniedUser(ticket.robloxUsername ?? "", ticket.requestedTag ?? "");
 
   await interaction.reply({
     embeds: [{ color: WHITE, description: `tag request denied by <@${interaction.user.id}>.`, timestamp: ts() }],
@@ -469,6 +485,7 @@ export async function handleTagManagerMessage(message: Message) {
     ticket.closedBy   = message.author.username;
     ticket.closedById = message.author.id;
     setTicket(ticket.channelId, ticket);
+    await kickDeniedUser(ticket.robloxUsername ?? "", ticket.requestedTag ?? "");
     await (message.channel as TextChannel).send({
       embeds: [{ color: WHITE, description: `tag request denied by <@${message.author.id}>.`, timestamp: ts() }],
     });
@@ -494,7 +511,7 @@ async function runGroupCheck(channel: TextChannel, robloxUsername: string, guild
 
   const user = await getUserByUsername(robloxUsername).catch(() => null);
   if (!user) {
-    await channel.send({ embeds: [{ color: RED, description: `couldnt find **${robloxUsername}** on roblox.`, timestamp: ts() }] });
+    await channel.send({ embeds: [{ color: RED, description: `couldn't find **${robloxUsername}** on roblox.`, timestamp: ts() }] });
     return;
   }
 
