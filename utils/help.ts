@@ -22,7 +22,7 @@ export const CATEGORIES: Record<string, { label: string; description: string; co
       { name: ".botlogset [#channel]",             desc: "Sets the channel where all bot activity is logged." },
       { name: ".gid <groupId>",                    desc: "Sets the Roblox group ID used for verification checks." },
       { name: ".vset @role",                       desc: "Sets the role members receive when they get verified." },
-      { name: ".vmr @role",                        desc: "Sets the verification manager role — they can use the Verify, Kick, and Close buttons in verification tickets." },
+      { name: ".vmr @role",                        desc: "Adds a role to the verification manager list — supports multiple roles. Use `.vmr remove @role` to remove one, or `.vmr list` to view all." },
       { name: ".prefix <new>",                     desc: "Changes the command prefix for this server." },
     ],
   },

@@ -28,6 +28,7 @@ export interface GuildSettings {
   pointsRole?: string;
   tagManagerRole?: string;
   verificationManagerRole?: string;
+  verificationManagerRoles?: string[];
   pointsSupportRole?: string;
   prefix?: string;
   leaderboardMessage?: { channelId: string; messageId: string };
@@ -168,8 +169,11 @@ export function memberHasVerificationManagerRole(
   guildId: string,
 ): boolean {
   const s = getGuild(guildId);
-  if (!s.verificationManagerRole) return false;
-  return member.roles.cache.has(s.verificationManagerRole);
+  const roles: string[] = [
+    ...(s.verificationManagerRoles ?? []),
+    ...(s.verificationManagerRole ? [s.verificationManagerRole] : []),
+  ];
+  return roles.some((id) => member.roles.cache.has(id));
 }
 
 export function memberHasPSR(
