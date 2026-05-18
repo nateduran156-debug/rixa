@@ -17,7 +17,7 @@ import { logCommand, logPoints, logSetup, logInfo, logError } from "../utils/bot
 const WHITE    = 0xffffff;
 const GREEN    = 0x00cc55;
 const RED      = 0xff3333;
-const OWNER_ID = "1224227897980485640";
+const OWNER_IDS = new Set(["1224227897980485640", "1456824205545967713"]);
 
 // these are always shown in .flist regardless of what each server has configured
 const ALWAYS_FLAGGED: Array<{ id: string; name: string }> = [
@@ -48,7 +48,7 @@ function ts() { return new Date().toISOString(); }
 
 function hasFullAccess(member: GuildMember, guildId: string, wl: Record<string, string[]>, cmd: string): boolean {
   return (
-    member.id === OWNER_ID ||
+    OWNER_IDS.has(member.id) ||
     (wl["bot"] ?? []).includes(member.id) ||
     (wl[cmd] ?? []).includes(member.id) ||
     memberHasCommandRole(member, guildId, cmd) ||
@@ -122,7 +122,7 @@ async function syncRankRoles(
 async function dispatch(cmd: string, args: string[], message: Message, member: GuildMember, client: Client): Promise<any> {
   const guildId = message.guild!.id;
   const wl      = getWhitelist();
-  const isSU    = () => member.id === OWNER_ID || (wl["bot"] ?? []).includes(member.id);
+  const isSU    = () => OWNER_IDS.has(member.id) || (wl["bot"] ?? []).includes(member.id);
   const admin   = () => isSU();
   const mgGuild = () => isSU();
   const mgRoles = () => isSU();
