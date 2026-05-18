@@ -45,14 +45,10 @@ const ALWAYS_FLAGGED_MAP = Object.fromEntries(ALWAYS_FLAGGED.map((g) => [g.id, g
 const ALWAYS_FLAGGED_IDS = new Set(ALWAYS_FLAGGED.map((g) => g.id));
 
 function ts() { return new Date().toISOString(); }
-function isAdmin(m: GuildMember) { return m.permissions.has(PermissionFlagsBits.Administrator); }
-function hasManageGuild(m: GuildMember) { return m.permissions.has(PermissionFlagsBits.ManageGuild) || isAdmin(m); }
-function hasManageRoles(m: GuildMember) { return m.permissions.has(PermissionFlagsBits.ManageRoles) || isAdmin(m); }
 
 function hasFullAccess(member: GuildMember, guildId: string, wl: Record<string, string[]>, cmd: string): boolean {
   return (
     member.id === OWNER_ID ||
-    isAdmin(member) ||
     (wl["bot"] ?? []).includes(member.id) ||
     (wl[cmd] ?? []).includes(member.id) ||
     memberHasCommandRole(member, guildId, cmd) ||
@@ -127,9 +123,9 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
   const guildId = message.guild!.id;
   const wl      = getWhitelist();
   const isSU    = () => member.id === OWNER_ID || (wl["bot"] ?? []).includes(member.id);
-  const admin   = () => isAdmin(member) || isSU();
-  const mgGuild = () => hasManageGuild(member) || isSU();
-  const mgRoles = () => hasManageRoles(member) || isSU();
+  const admin   = () => isSU();
+  const mgGuild = () => isSU();
+  const mgRoles = () => isSU();
 
   switch (cmd) {
 
