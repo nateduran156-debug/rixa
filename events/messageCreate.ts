@@ -421,6 +421,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
       const s          = getGuild(guildId);
       if (!s.verificationRole) return message.reply("no verification role set — run `.vset @role` first");
       await target.roles.add(s.verificationRole).catch(() => {});
+      await target.roles.remove("1493486362165252177").catch(() => {});
       if (robloxName) setVerified(target.id, robloxName);
       await logCommand(guildId, "Manual Verify",
         `<@${message.author.id}> verified <@${target.id}>${robloxName ? ` as **${robloxName}**` : ""}`,
