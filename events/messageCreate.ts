@@ -88,7 +88,7 @@ export function registerMessageCreate(client: Client) {
         `something went wrong when <@${message.author.id}> ran \`.${cmd}\``,
         [{ name: "Error", value: String(err).slice(0, 1000) }],
       );
-      await message.reply("something went wrong on my end, try again").catch(() => {});
+      await message.reply("something went wrong on my end — try again in a moment").catch(() => {});
     }
   });
 }
@@ -130,7 +130,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
   switch (cmd) {
 
     case "role": {
-      if (!admin() && !memberHasTagManagerRole(member, guildId)) return message.reply("your not whitelisted loser");
+      if (!admin() && !memberHasTagManagerRole(member, guildId)) return message.reply("you're not authorized to use that command");
 
       const ALL_TAGS = ["rixa", "fawn", "ghoul", "shy", "sorrow", "ryuk tag", "bunni tag", "bunni knife", "no tag"];
       const username = args[0];
@@ -145,7 +145,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
 
       const loading = await message.reply(`looking up **${username}**...`);
       const user    = await getUserByUsername(username);
-      if (!user) return loading.edit({ content: `cant find **${username}** on roblox` });
+      if (!user) return loading.edit({ content: `can't find **${username}** on roblox` });
 
       const s        = getGuild(guildId);
       const rankInfo = s.groupId ? await getGroupRank(user.id, s.groupId).catch(() => null) : null;
@@ -202,7 +202,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
     }
 
     case "setupticket": {
-      if (!mgGuild()) return message.reply("your not whitelisted loser");
+      if (!mgGuild()) return message.reply("you're not authorized to use that command");
       const channels = message.mentions.channels;
       const type = (args.find((a) => ["verification", "tag", "both"].includes(a)) ?? "both") as "verification" | "tag" | "both";
       if (channels.size === 0) return message.reply("mention a channel. example: `.setupticket #tickets both`");
@@ -218,7 +218,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
     }
 
     case "logset": {
-      if (!mgGuild()) return message.reply("your not whitelisted loser");
+      if (!mgGuild()) return message.reply("you're not authorized to use that command");
       const ch = message.mentions.channels.first() ?? message.channel;
       setGuild(guildId, { logChannel: (ch as TextChannel).id });
       await logSetup(guildId, "Log Channel Set", `<@${message.author.id}> set the log channel to <#${ch.id}>`);
@@ -226,7 +226,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
     }
 
     case "taglogset": {
-      if (!mgGuild()) return message.reply("your not whitelisted loser");
+      if (!mgGuild()) return message.reply("you're not authorized to use that command");
       const ch = message.mentions.channels.first() ?? message.channel;
       setGuild(guildId, { tagLogChannel: (ch as TextChannel).id });
       await logSetup(guildId, "Tag Log Channel Set", `<@${message.author.id}> set the tag log channel to <#${ch.id}>`);
@@ -234,7 +234,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
     }
 
     case "botlogset": {
-      if (!admin()) return message.reply("your not whitelisted loser");
+      if (!admin()) return message.reply("you're not authorized to use that command");
       const ch = message.mentions.channels.first() ?? message.channel;
       setGuild(guildId, { botLogChannel: (ch as TextChannel).id });
       await logInfo(guildId, "Bot Log Channel Set",
@@ -244,7 +244,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
     }
 
     case "vset": {
-      if (!mgGuild()) return message.reply("your not whitelisted loser");
+      if (!mgGuild()) return message.reply("you're not authorized to use that command");
       const role = message.mentions.roles.first();
       if (!role) return message.reply("mention the role you want to use for verification");
       setGuild(guildId, { verificationRole: role.id });
@@ -253,16 +253,16 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
     }
 
     case "gid": {
-      if (!mgGuild()) return message.reply("your not whitelisted loser");
+      if (!mgGuild()) return message.reply("you're not authorized to use that command");
       const groupId = args[0];
-      if (!groupId || isNaN(Number(groupId))) return message.reply("need a valid roblox group id");
+      if (!groupId || isNaN(Number(groupId))) return message.reply("please provide a valid Roblox group id");
       setGuild(guildId, { groupId });
       await logSetup(guildId, "Group ID Set", `<@${message.author.id}> set the group ID to \`${groupId}\``);
       return message.reply(`group id set to \`${groupId}\``);
     }
 
     case "prefix": {
-      if (!admin()) return message.reply("your not whitelisted loser");
+      if (!admin()) return message.reply("you're not authorized to use that command");
       const newPrefix = args[0];
       if (!newPrefix) return message.reply("`.prefix <new>`");
       if (newPrefix.length > 5) return message.reply("keep it under 5 characters");
@@ -272,9 +272,9 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
     }
 
     case "flag": {
-      if (!mgGuild()) return message.reply("your not whitelisted loser");
+      if (!mgGuild()) return message.reply("you're not authorized to use that command");
       const gid = args[0];
-      if (!gid || isNaN(Number(gid))) return message.reply("need a valid group id");
+      if (!gid || isNaN(Number(gid))) return message.reply("please provide a valid group id");
       if (ALWAYS_FLAGGED_IDS.has(gid)) return message.reply(`\`${gid}\` is already in the global flag list`);
       const s       = getGuild(guildId);
       const flagged = s.flaggedGroups ?? [];
@@ -289,13 +289,13 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
     }
 
     case "unflag": {
-      if (!mgGuild()) return message.reply("your not whitelisted loser");
+      if (!mgGuild()) return message.reply("you're not authorized to use that command");
       const gid = args[0];
-      if (!gid) return message.reply("need a group id to unflag");
-      if (ALWAYS_FLAGGED_IDS.has(gid)) return message.reply(`\`${gid}\` is in the global list and cant be unflagged`);
+      if (!gid) return message.reply("please provide a group id to unflag");
+      if (ALWAYS_FLAGGED_IDS.has(gid)) return message.reply(`\`${gid}\` is in the global list and can't be unflagged`);
       const s       = getGuild(guildId);
       const flagged = s.flaggedGroups ?? [];
-      if (!flagged.includes(gid)) return message.reply(`\`${gid}\` isnt on the list`);
+      if (!flagged.includes(gid)) return message.reply(`\`${gid}\` isn't on the list`);
       setGuild(guildId, { flaggedGroups: flagged.filter((g) => g !== gid) });
       await logSetup(guildId, "Group Unflagged", `<@${message.author.id}> unflagged group \`${gid}\``);
       return message.reply(`unflagged \`${gid}\``);
@@ -342,7 +342,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
 
     case "gc": {
       const username = args[0];
-      if (!username) { await message.reply("give me a username"); return; }
+      if (!username) { await message.reply("please provide a username"); return; }
       const loading  = await message.reply(`checking **${username}**...`);
       const user     = await getUserByUsername(username);
       if (!user) return loading.edit({ content: `couldn't find **${username}** on Roblox` });
@@ -410,7 +410,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
     }
 
     case "verify": {
-      if (!mgRoles()) return message.reply("your not whitelisted loser");
+      if (!mgRoles()) return message.reply("you're not authorized to use that command");
       const target     = message.mentions.members?.first();
       if (!target) return message.reply("mention the user you want to verify");
       const robloxName = args[1] ?? null;
@@ -427,7 +427,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
     }
 
     case "unverify": {
-      if (!mgRoles()) return message.reply("your not whitelisted loser");
+      if (!mgRoles()) return message.reply("you're not authorized to use that command");
       const target = message.mentions.members?.first();
       if (!target) return message.reply("mention the user you want to unverify");
       const s = getGuild(guildId);
@@ -438,7 +438,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
     }
 
     case "wl": {
-      if (!admin()) return message.reply("your not whitelisted loser");
+      if (!admin()) return message.reply("you're not authorized to use that command");
       const sub = args[0];
       if (sub === "bot") {
         const t = message.mentions.users.first();
@@ -467,7 +467,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
     }
 
     case "wlrole": {
-      if (!mgGuild()) return message.reply("your not whitelisted loser");
+      if (!mgGuild()) return message.reply("you're not authorized to use that command");
       const role = message.mentions.roles.first();
       if (!role) return message.reply("`.wlrole @role [command]`");
       const cmdName = args[1]?.toLowerCase();
@@ -490,7 +490,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
     }
 
     case "wlp": {
-      if (!admin()) return message.reply("your not whitelisted loser");
+      if (!admin()) return message.reply("you're not authorized to use that command");
       const role = message.mentions.roles.first();
       if (!role) return message.reply("`.wlp @role`");
       const s = getGuild(guildId);
@@ -501,40 +501,40 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
     }
 
     case "tmr": {
-      if (!admin()) return message.reply("your not whitelisted loser");
+      if (!admin()) return message.reply("you're not authorized to use that command");
       const roleArg = args[0];
       if (!roleArg) return message.reply("`.tmr @role` or `.tmr <role id>`");
       const role = message.mentions.roles.first() ?? message.guild!.roles.cache.get(roleArg.replace(/\D/g, ""));
-      if (!role) return message.reply("couldnt find that role — mention it or give me a valid id");
+      if (!role) return message.reply("couldn't find that role — mention it or give me a valid id");
       setGuild(guildId, { tagManagerRole: role.id });
       await logSetup(guildId, "Tag Manager Role Set", `<@${message.author.id}> set the tag manager role to <@&${role.id}>`);
       return message.reply(`<@&${role.id}> is now the tag manager role — they can use \`.role\``);
     }
 
     case "vmr": {
-      if (!admin()) return message.reply("your not whitelisted loser");
+      if (!admin()) return message.reply("you're not authorized to use that command");
       const roleArg = args[0];
       if (!roleArg) return message.reply("`.vmr @role` or `.vmr <role id>`");
       const role = message.mentions.roles.first() ?? message.guild!.roles.cache.get(roleArg.replace(/\D/g, ""));
-      if (!role) return message.reply("couldnt find that role — mention it or give me a valid id");
+      if (!role) return message.reply("couldn't find that role — mention it or give me a valid id");
       setGuild(guildId, { verificationManagerRole: role.id });
       await logSetup(guildId, "Verification Manager Role Set", `<@${message.author.id}> set the verification manager role to <@&${role.id}>`);
       return message.reply(`<@&${role.id}> is now the verification manager role — they can use the Verify, Kick, and Close buttons in verification tickets`);
     }
 
     case "psr": {
-      if (!admin()) return message.reply("your not whitelisted loser");
+      if (!admin()) return message.reply("you're not authorized to use that command");
       const roleArg = args[0];
       if (!roleArg) return message.reply("`.psr @role` or `.psr <role id>`");
       const role = message.mentions.roles.first() ?? message.guild!.roles.cache.get(roleArg.replace(/\D/g, ""));
-      if (!role) return message.reply("couldnt find that role — mention it or give me a valid id");
+      if (!role) return message.reply("couldn't find that role — mention it or give me a valid id");
       setGuild(guildId, { pointsSupportRole: role.id });
       await logSetup(guildId, "Points Support Role Set", `<@${message.author.id}> set the points support role to <@&${role.id}>`);
       return message.reply(`<@&${role.id}> is now the points support role — they can use \`.check\`, \`.lb\`, and \`.rankup\``);
     }
 
     case "whitelisted": {
-      if (!admin()) return message.reply("your not whitelisted loser");
+      if (!admin()) return message.reply("you're not authorized to use that command");
       const wlData       = getWhitelist();
       const s            = getGuild(guildId);
       const lines: string[] = [];
@@ -559,7 +559,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
     }
 
     case "rankup": {
-      if (!hasFullAccess(member, guildId, wl, "rankup")) return message.reply("your not whitelisted loser");
+      if (!hasFullAccess(member, guildId, wl, "rankup")) return message.reply("you're not authorized to use that command");
       let amount = 1;
       const target = message.mentions.users.first();
       if (!target) return message.reply("mention a user to give points to");
@@ -583,7 +583,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
     }
 
     case "remove": {
-      if (!hasFullAccess(member, guildId, wl, "remove")) return message.reply("your not whitelisted loser");
+      if (!hasFullAccess(member, guildId, wl, "remove")) return message.reply("you're not authorized to use that command");
       let amount = 1;
       const target = message.mentions.users.first();
       if (!target) return message.reply("mention a user to remove points from");
@@ -608,13 +608,13 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
 
     case "resetall": {
       const hasAccess = admin() || memberHasPointsRole(member, guildId);
-      if (!hasAccess) return message.reply("your not whitelisted loser");
+      if (!hasAccess) return message.reply("you're not authorized to use that command");
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder().setCustomId("resetall_confirm").setLabel("reset all points").setStyle(ButtonStyle.Danger),
         new ButtonBuilder().setCustomId("resetall_cancel").setLabel("cancel").setStyle(ButtonStyle.Secondary),
       );
       const msg = await message.reply({
-        embeds: [{ color: WHITE, title: "reset all points", description: "this wipes **every** raid point in the server and cant be undone", footer: { text: `requested by ${message.author.username}` }, timestamp: ts() }],
+        embeds: [{ color: WHITE, title: "reset all points", description: "this wipes **every** raid point in the server and can't be undone", footer: { text: `requested by ${message.author.username}` }, timestamp: ts() }],
         components: [row],
       });
       const collector = msg.createMessageComponentCollector({ filter: (i) => i.user.id === message.author.id, time: 15000 });
@@ -649,7 +649,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
     case "check": {
       const target = message.mentions.users.first();
       if (target && target.id !== message.author.id) {
-        if (!hasFullAccess(member, guildId, wl, "check") && !memberHasPSR(member, guildId)) { await message.reply("your not whitelisted loser"); return; }
+        if (!hasFullAccess(member, guildId, wl, "check") && !memberHasPSR(member, guildId)) { await message.reply("you're not authorized to use that command"); return; }
       }
       const subject = target ?? message.author;
       const pts     = getPoints(guildId);
@@ -669,7 +669,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
     }
 
     case "status": {
-      if (!admin()) { await message.reply("your not whitelisted loser"); return; }
+      if (!admin()) { await message.reply("you're not authorized to use that command"); return; }
       const text = args.join(" ");
       if (!text) { await message.reply("`.status <text>` or `.status clear`"); return; }
       if (text.toLowerCase() === "clear") {
@@ -685,7 +685,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
     }
 
     case "presence": {
-      if (!admin()) { await message.reply("your not whitelisted loser"); return; }
+      if (!admin()) { await message.reply("you're not authorized to use that command"); return; }
       const valid = ["online", "idle", "dnd", "invisible"] as const;
       const s = args[0]?.toLowerCase() as typeof valid[number] | undefined;
       if (!s || !valid.includes(s)) { await message.reply("`.presence <online|idle|dnd|invisible>`"); return; }
@@ -697,7 +697,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
 
     case "setavatar":
     case "setpfp": {
-      if (!admin()) { await message.reply("your not whitelisted loser"); return; }
+      if (!admin()) { await message.reply("you're not authorized to use that command"); return; }
       const url = message.attachments.first()?.url ?? args[0];
       if (!url) { await message.reply("attach an image or give me a url. example: `.setavatar https://...`"); return; }
       const loading = await message.reply("updating pfp...");
@@ -707,13 +707,13 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
         await logInfo(guildId, "Avatar Updated", `<@${message.author.id}> changed the bot's profile picture`);
         await loading.edit("pfp updated");
       } catch (e: unknown) {
-        await loading.edit(`couldnt update it — ${String(e)}`);
+        await loading.edit(`couldn't update it — ${String(e)}`);
       }
       return;
     }
 
     case "setbanner": {
-      if (!admin()) { await message.reply("your not whitelisted loser"); return; }
+      if (!admin()) { await message.reply("you're not authorized to use that command"); return; }
       const url = message.attachments.first()?.url ?? args[0];
       if (!url) { await message.reply("attach an image or give me a url. example: `.setbanner https://...`"); return; }
       const loading = await message.reply("updating banner...");
@@ -723,13 +723,13 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
         await logInfo(guildId, "Banner Updated", `<@${message.author.id}> changed the bot's banner`);
         await loading.edit("banner updated");
       } catch (e: unknown) {
-        await loading.edit(`couldnt update it — make sure the bot account has nitro, thats required for banners. error: ${String(e)}`);
+        await loading.edit(`couldn't update it — make sure the bot account has nitro, that's required for banners. error: ${String(e)}`);
       }
       return;
     }
 
     case "setusername": {
-      if (!admin()) { await message.reply("your not whitelisted loser"); return; }
+      if (!admin()) { await message.reply("you're not authorized to use that command"); return; }
       const name = args.join(" ");
       if (!name) { await message.reply("`.setusername <new name>`"); return; }
       if (name.length < 2 || name.length > 32) { await message.reply("name has to be between 2 and 32 characters"); return; }
@@ -739,14 +739,14 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
         await logInfo(guildId, "Username Updated", `<@${message.author.id}> changed the bot username to **${name}**`);
         await loading.edit(`username is now **${name}**`);
       } catch (e: unknown) {
-        await loading.edit(`couldnt update it — discord rate limits username changes, wait a bit and try again. error: ${String(e)}`);
+        await loading.edit(`couldn't update it — discord rate limits username changes, wait a bit and try again. error: ${String(e)}`);
       }
       return;
     }
 
     case "setnickname":
     case "setnick": {
-      if (!admin()) { await message.reply("your not whitelisted loser"); return; }
+      if (!admin()) { await message.reply("you're not authorized to use that command"); return; }
       const nick = args.join(" ") || null;
       const loading = await message.reply(nick ? "updating nickname..." : "clearing nickname...");
       try {
@@ -760,13 +760,13 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
         );
         await loading.edit(nick ? `nickname is now **${nick}**` : "nickname cleared");
       } catch (e: unknown) {
-        await loading.edit(`couldnt do it — ${String(e)}`);
+        await loading.edit(`couldn't do it — ${String(e)}`);
       }
       return;
     }
 
     case "backup": {
-      if (!admin()) { await message.reply("your not whitelisted loser"); return; }
+      if (!admin()) { await message.reply("you're not authorized to use that command"); return; }
       const backup = createBackup();
       const buffer = Buffer.from(JSON.stringify(backup, null, 2), "utf8");
       await logInfo(guildId, "Backup Created", `<@${message.author.id}> created a data backup (${Object.keys(backup.files).length} files)`);
@@ -778,15 +778,15 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
     }
 
     case "restore": {
-      if (!admin()) { await message.reply("your not whitelisted loser"); return; }
+      if (!admin()) { await message.reply("you're not authorized to use that command"); return; }
       const attachment = message.attachments.first();
       if (!attachment?.name.endsWith(".json")) { await message.reply("attach a valid `.json` backup file"); return; }
       const loading = await message.reply("restoring...");
       let raw: string;
-      try { raw = await fetch(attachment.url).then((r) => r.text()); } catch { await loading.edit({ content: "couldnt download the file" }); return; }
+      try { raw = await fetch(attachment.url).then((r) => r.text()); } catch { await loading.edit({ content: "couldn't download the file" }); return; }
       let backup: { files: Record<string, unknown> };
       try { backup = JSON.parse(raw); } catch { await loading.edit({ content: "that file is unreadable" }); return; }
-      if (!backup.files || typeof backup.files !== "object") { await loading.edit({ content: "that doesnt look like a valid rixa backup" }); return; }
+      if (!backup.files || typeof backup.files !== "object") { await loading.edit({ content: "that doesn't look like a valid rixa backup" }); return; }
       const restored = restoreBackup(backup);
       await logInfo(guildId, "Backup Restored", `<@${message.author.id}> restored a backup (${restored} files)`);
       await loading.edit({ embeds: [{ color: WHITE, description: `restored **${restored}** files`, footer: { text: message.guild!.name }, timestamp: ts() }] });
