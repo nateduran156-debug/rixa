@@ -513,13 +513,43 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
 
     case "vmr": {
       if (!admin()) return message.reply("you're not authorized to use that command");
-      const roleArg = args[0];
-      if (!roleArg) return message.reply("`.vmr @role` or `.vmr <role id>`");
+      const sub = args[0]?.toLowerCase();
+
+      if (sub === "list") {
+        const s = getGuild(guildId);
+        const roles: string[] = [
+          ...(s.verificationManagerRoles ?? []),
+          ...(s.verificationManagerRole ? [s.verificationManagerRole] : []),
+        ];
+        if (roles.length === 0) return message.reply("no verification manager roles configured yet");
+        return message.reply({ embeds: [{ color: WHITE, title: "verification manager roles", description: roles.map((id) => `<@&${id}>`).join("\n"), footer: { text: message.guild!.name }, timestamp: ts() }] });
+      }
+
+      if (sub === "remove") {
+        const roleArg = args[1];
+        if (!roleArg) return message.reply("`.vmr remove @role` or `.vmr remove <role id>`");
+        const role = message.mentions.roles.first() ?? message.guild!.roles.cache.get(roleArg.replace(/\D/g, ""));
+        if (!role) return message.reply("couldn't find that role — mention it or give me a valid id");
+        const s = getGuild(guildId);
+        const current = s.verificationManagerRoles ?? [];
+        if (!current.includes(role.id)) return message.reply(`<@&${role.id}> isn't in the VMR list`);
+        setGuild(guildId, { verificationManagerRoles: current.filter((id) => id !== role.id) });
+        await logSetup(guildId, "VMR Role Removed", `<@${message.author.id}> removed <@&${role.id}> from the verification manager roles`);
+        return message.reply(`<@&${role.id}> has been removed from the verification manager roles`);
+      }
+
+      // default: add a role
+      const roleArg = sub === "add" ? args[1] : args[0];
+      if (!roleArg) return message.reply("`.vmr @role` — add a role  |  `.vmr remove @role` — remove  |  `.vmr list` — view all");
       const role = message.mentions.roles.first() ?? message.guild!.roles.cache.get(roleArg.replace(/\D/g, ""));
       if (!role) return message.reply("couldn't find that role — mention it or give me a valid id");
-      setGuild(guildId, { verificationManagerRole: role.id });
-      await logSetup(guildId, "Verification Manager Role Set", `<@${message.author.id}> set the verification manager role to <@&${role.id}>`);
-      return message.reply(`<@&${role.id}> is now the verification manager role — they can use the Verify, Kick, and Close buttons in verification tickets`);
+      const s = getGuild(guildId);
+      const current = s.verificationManagerRoles ?? [];
+      if (current.includes(role.id)) return message.reply(`<@&${role.id}> is already a verification manager role`);
+      current.push(role.id);
+      setGuild(guildId, { verificationManagerRoles: current });
+      await logSetup(guildId, "VMR Role Added", `<@${message.author.id}> added <@&${role.id}> as a verification manager role`);
+      return message.reply(`<@&${role.id}> added to the verification manager roles — they can use the Verify, Kick, and Close buttons in verification tickets`);
     }
 
     case "psr": {

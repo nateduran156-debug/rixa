@@ -178,9 +178,19 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName("vmr")
-    .setDescription("set the verification manager role — they can use Verify, Kick, and Close in verification tickets")
+    .setDescription("manage verification manager roles — they can use Verify, Kick, and Close in tickets")
     .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
-    .addRoleOption((o) => o.setName("role").setDescription("verification manager role").setRequired(true)),
+    .addSubcommand((s) =>
+      s.setName("add").setDescription("add a role to the verification manager list")
+        .addRoleOption((o) => o.setName("role").setDescription("role to add").setRequired(true)),
+    )
+    .addSubcommand((s) =>
+      s.setName("remove").setDescription("remove a role from the verification manager list")
+        .addRoleOption((o) => o.setName("role").setDescription("role to remove").setRequired(true)),
+    )
+    .addSubcommand((s) =>
+      s.setName("list").setDescription("list all current verification manager roles"),
+    ),
 
   new SlashCommandBuilder()
     .setName("psr")
