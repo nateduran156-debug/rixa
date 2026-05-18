@@ -8,10 +8,10 @@ import {
   memberHasVerificationManagerRole,
   removeVerified, setVerified, createBackup, restoreBackup, readJSON, writeJSON,
 } from "../utils/storage.js";
-import { getUserByUsername, getUserGroups, isInGroup, getGroupInfo, getGroupInfoBatch, getGroupRank, giveRobloxTagRole, getUserAvatarUrl } from "../utils/roblox.js";
+import { getUserByUsername, getUserGroups, isInGroup, getGroupInfo, getGroupInfoBatch, getGroupRank, giveRobloxTagRole, getUserAvatarUrl, getPendingJoinRequests, acceptJoinRequest } from "../utils/roblox.js";
 import { buildLeaderboardEmbed, refreshLeaderboard } from "../utils/leaderboard.js";
 import { buildHelpMessage } from "../utils/help.js";
-import { sendTicketPanel, handleTagManagerMessage } from "../handlers/ticketHandler.js";
+import { sendTicketPanel, handleTagManagerMessage, closeTicketByMessage } from "../handlers/ticketHandler.js";
 import { logCommand, logPoints, logSetup, logInfo, logError } from "../utils/botLogger.js";
 
 const WHITE    = 0xffffff;
@@ -132,15 +132,15 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
     case "role": {
       if (!admin() && !memberHasTagManagerRole(member, guildId)) return message.reply("your not whitelisted loser");
 
-      const ALL_TAGS = ["rixa", "fawn", "ghoul", "shy", "sorrow", "no tag"];
+      const ALL_TAGS = ["rixa", "fawn", "ghoul", "shy", "sorrow", "ryuk tag", "bunni tag", "bunni knife", "no tag"];
       const username = args[0];
       const tagInput = args.slice(1).join(" ").toLowerCase();
 
       if (!username || !tagInput) {
-        return message.reply("`.role <roblox username> <tag>`\ntags: rixa, fawn, ghoul, shy, sorrow, no tag");
+        return message.reply("`.role <roblox username> <tag>`\ntags: rixa, fawn, ghoul, shy, sorrow, ryuk tag, bunni tag, bunni knife, no tag");
       }
       if (!ALL_TAGS.includes(tagInput)) {
-        return message.reply(`\`${tagInput}\` isnt a valid tag. options: ${ALL_TAGS.map((t) => `\`${t}\``).join(", ")}`);
+        return message.reply(`\`${tagInput}\` isn't a valid tag. options: ${ALL_TAGS.map((t) => `\`${t}\``).join(", ")}`);
       }
 
       const loading = await message.reply(`looking up **${username}**...`);
@@ -838,6 +838,97 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
       if (ranks.length === 0) return message.reply("no ranks configured yet — use `.addrank <roleId> <points> [name]` to get started");
       const lines = ranks.map((r, i) => `\`${i + 1}.\` <@&${r.roleId}> — **${r.points}** pts — \`${r.name}\``);
       return message.reply({ embeds: [{ color: WHITE, title: `rank configuration (${ranks.length}/30)`, description: lines.join("\n"), footer: { text: message.guild!.name }, timestamp: ts() }] });
+    }
+
+    case "closeticket": {
+      if (!admin() && !memberHasTagManagerRole(member, guildId)) return message.reply("you don't have permission to close tickets.");
+      await closeTicketByMessage(message);
+      return;
+    }
+
+    case "approve": {
+      if (!admin()) return message.reply("you don't have permission to configure approved groups.");
+      const groupId = args[0];
+      if (!groupId) return message.reply("`.approve <group_id>` — provide the Roblox group ID to add.");
+      const info = await getGroupInfo(groupId);
+      if (!info) return message.reply(`couldn't find a group with ID \`${groupId}\` on Roblox.`);
+      const s      = getGuild(guildId);
+      const groups = s.approvedGroups ?? [];
+      if (groups.some((g) => g.groupId === groupId)) return message.reply(`group **${info.name}** (\`${groupId}\`) is already in the approved list.`);
+      groups.push({ groupId, name: info.name });
+      setGuild(guildId, { approvedGroups: groups });
+      await logSetup(guildId, "Approved Group Added", `<@${message.author.id}> added **${info.name}** to approved groups`);
+      return message.reply({
+        embeds: [{
+          color: WHITE,
+          description: `**${info.name}** (\`${groupId}\`) has been added to the approved groups list.\nTag managers can now use \`.accept\` and \`.pending\` for this group.`,
+          footer: { text: message.guild!.name },
+          timestamp: ts(),
+        }],
+      });
+    }
+
+    case "pending": {
+      if (!admin() && !memberHasTagManagerRole(member, guildId)) return message.reply("you don't have permission to view pending requests.");
+      const s      = getGuild(guildId);
+      const groups = s.approvedGroups ?? [];
+      if (groups.length === 0) return message.reply("no approved groups configured yet. use `.approve <group_id>` to add one.");
+      const loading = await message.reply("fetching pending join requests...");
+      const results: string[] = [];
+      for (const g of groups) {
+        const pending = await getPendingJoinRequests(g.groupId);
+        if (pending.length === 0) {
+          results.push(`**${g.name}** (\`${g.groupId}\`) — no pending requests`);
+        } else {
+          const names = pending.map((p) => `• \`${p.username}\``).join("\n");
+          results.push(`**${g.name}** (\`${g.groupId}\`) — **${pending.length}** pending\n${names}`);
+        }
+      }
+      await loading.edit({
+        content: null,
+        embeds: [{
+          color: WHITE,
+          title: "Pending Join Requests",
+          description: results.join("\n\n"),
+          footer: { text: message.guild!.name },
+          timestamp: ts(),
+        }],
+      });
+      return;
+    }
+
+    case "accept": {
+      if (!admin() && !memberHasTagManagerRole(member, guildId)) return message.reply("you don't have permission to accept join requests.");
+      const username  = args[0];
+      const groupArg  = args.slice(1).join(" ").toLowerCase();
+      if (!username || !groupArg) return message.reply("`.accept <roblox_user> <group name or id>`");
+      const s      = getGuild(guildId);
+      const groups = s.approvedGroups ?? [];
+      if (groups.length === 0) return message.reply("no approved groups configured. use `.approve <group_id>` first.");
+      const group = groups.find((g) => g.groupId === groupArg || g.name.toLowerCase() === groupArg);
+      if (!group) {
+        const list = groups.map((g) => `• **${g.name}** (\`${g.groupId}\`)`).join("\n");
+        return message.reply(`couldn't match that to an approved group. approved groups:\n${list}`);
+      }
+      const loading = await message.reply(`looking up **${username}** on Roblox...`);
+      const user = await getUserByUsername(username);
+      if (!user) return loading.edit({ content: `couldn't find **${username}** on Roblox.` });
+      const result = await acceptJoinRequest(group.groupId, user.id);
+      if (!result.ok) return loading.edit({ content: `failed to accept the request: ${result.reason}` });
+      await loading.edit({
+        content: null,
+        embeds: [{
+          color: WHITE,
+          description: `**${user.name}**'s join request to **${group.name}** has been accepted by <@${message.author.id}>.`,
+          footer: { text: message.guild!.name },
+          timestamp: ts(),
+        }],
+      });
+      await logCommand(guildId, "Command: .accept",
+        `<@${message.author.id}> accepted **${user.name}** into **${group.name}**`,
+        [{ name: "Roblox", value: user.name, inline: true }, { name: "Group", value: group.name, inline: true }],
+      );
+      return;
     }
 
     default:
