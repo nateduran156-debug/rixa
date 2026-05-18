@@ -19,7 +19,7 @@ import { logCommand, logPoints, logSetup, logInfo } from "../utils/botLogger.js"
 const WHITE    = 0xffffff;
 const GREEN    = 0x00cc55;
 const RED      = 0xff3333;
-const OWNER_ID = "1224227897980485640";
+const OWNER_IDS = new Set(["1224227897980485640", "1456824205545967713"]);
 
 const ALWAYS_FLAGGED: Array<{ id: string; name: string }> = [
   { id: "650907997",  name: "YNGS"     },
@@ -51,7 +51,7 @@ function getMember(i: ChatInputCommandInteraction): GuildMember | null {
   return (i.member as GuildMember | null) ?? null;
 }
 
-function isOwner(i: ChatInputCommandInteraction) { return i.user.id === OWNER_ID; }
+function isOwner(i: ChatInputCommandInteraction) { return OWNER_IDS.has(i.user.id); }
 
 function isSU(i: ChatInputCommandInteraction): boolean {
   const wl = getWhitelist();
