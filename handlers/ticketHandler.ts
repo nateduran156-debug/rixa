@@ -127,14 +127,20 @@ export async function openVerificationTicket(
   const category = guild.channels.cache.get("1493484158738108447") ?? null;
 
   const FALLBACK_VMR = "1493484814215413771";
-  const vmrRoleId = settings.verificationManagerRole ?? FALLBACK_VMR;
+  const vmrRoleIds: string[] = [
+    ...(settings.verificationManagerRoles ?? []),
+    ...(settings.verificationManagerRole ? [settings.verificationManagerRole] : []),
+  ];
+  if (vmrRoleIds.length === 0) vmrRoleIds.push(FALLBACK_VMR);
 
   const verifyOverwrites: import("discord.js").OverwriteResolvable[] = [
     { id: guild.id,   deny:  [PermissionFlagsBits.ViewChannel] },
     { id: i.user.id,  allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
   ];
-  if (guild.roles.cache.has(vmrRoleId)) {
-    verifyOverwrites.push({ id: vmrRoleId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] });
+  for (const rid of vmrRoleIds) {
+    if (guild.roles.cache.has(rid)) {
+      verifyOverwrites.push({ id: rid, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] });
+    }
   }
   if (settings.tagManagerRole && guild.roles.cache.has(settings.tagManagerRole)) {
     verifyOverwrites.push({ id: settings.tagManagerRole, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] });
@@ -154,7 +160,7 @@ export async function openVerificationTicket(
   );
 
   const msg = await ticketChannel.send({
-    content: `<@${i.user.id}> <@&${vmrRoleId}>`,
+    content: `<@${i.user.id}> ${vmrRoleIds.map((id) => `<@&${id}>`).join(" ")}`,
     embeds: [{
       color: WHITE,
       title: "verification ticket",

@@ -506,10 +506,36 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
     // ── vmr ──────────────────────────────────────────────────────────────────
     case "vmr": {
       if (!admin(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
-      const role = i.options.getRole("role", true);
-      setGuild(guildId, { verificationManagerRole: role.id });
-      await logSetup(guildId, "Verification Manager Role Set", `<@${i.user.id}> set the verification manager role to <@&${role.id}>`);
-      return i.reply({ content: `<@&${role.id}> is now the verification manager role — they can use the Verify, Kick, and Close buttons in verification tickets` });
+      const sub  = i.options.getSubcommand();
+      const role = i.options.getRole("role");
+      const s    = getGuild(guildId);
+
+      if (sub === "list") {
+        const roles: string[] = [
+          ...(s.verificationManagerRoles ?? []),
+          ...(s.verificationManagerRole ? [s.verificationManagerRole] : []),
+        ];
+        if (roles.length === 0) return i.reply({ content: "no verification manager roles configured yet", ephemeral: true });
+        return i.reply({ embeds: [{ color: WHITE, title: "verification manager roles", description: roles.map((id) => `<@&${id}>`).join("\n"), footer: { text: i.guild?.name ?? "bot" }, timestamp: ts() }] });
+      }
+
+      if (sub === "remove") {
+        if (!role) return i.reply({ content: "please select a role to remove", ephemeral: true });
+        const current = s.verificationManagerRoles ?? [];
+        if (!current.includes(role.id)) return i.reply({ content: `<@&${role.id}> isn't in the VMR list`, ephemeral: true });
+        setGuild(guildId, { verificationManagerRoles: current.filter((id) => id !== role.id) });
+        await logSetup(guildId, "VMR Role Removed", `<@${i.user.id}> removed <@&${role.id}> from the verification manager roles`);
+        return i.reply({ content: `<@&${role.id}> has been removed from the verification manager roles` });
+      }
+
+      // sub === "add"
+      if (!role) return i.reply({ content: "please select a role to add", ephemeral: true });
+      const current = s.verificationManagerRoles ?? [];
+      if (current.includes(role.id)) return i.reply({ content: `<@&${role.id}> is already a verification manager role`, ephemeral: true });
+      current.push(role.id);
+      setGuild(guildId, { verificationManagerRoles: current });
+      await logSetup(guildId, "VMR Role Added", `<@${i.user.id}> added <@&${role.id}> as a verification manager role`);
+      return i.reply({ content: `<@&${role.id}> added to the verification manager roles — they can use the Verify, Kick, and Close buttons in verification tickets` });
     }
 
     // ── psr ──────────────────────────────────────────────────────────────────
