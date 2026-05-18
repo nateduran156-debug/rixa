@@ -99,9 +99,7 @@ export async function openVerificationTicket(
   const i = interaction as import("discord.js").ModalSubmitInteraction;
   const settings = getGuild(guild.id);
 
-  const category = guild.channels.cache.find(
-    (c) => c.type === ChannelType.GuildCategory && c.name.toLowerCase().includes("ticket"),
-  );
+  const category = guild.channels.cache.get("1493484158738108447") ?? null;
 
   const FALLBACK_VMR = "1493484814215413771";
   const vmrRoleId = settings.verificationManagerRole ?? FALLBACK_VMR;
@@ -180,9 +178,7 @@ export async function openTagChannel(interaction: Interaction) {
   const guild    = i.guild!;
   const settings = getGuild(guild.id);
 
-  const category = guild.channels.cache.find(
-    (c) => c.type === ChannelType.GuildCategory && c.name.toLowerCase().includes("ticket"),
-  );
+  const category = guild.channels.cache.get("1493506799347830834") ?? null;
 
   const overwrites: import("discord.js").OverwriteResolvable[] = [
     { id: guild.id,  deny:  [PermissionFlagsBits.ViewChannel] },
