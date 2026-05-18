@@ -68,11 +68,8 @@ export async function handleButton(interaction: Interaction) {
     if (customId === "ticket_close") {
       if (!ticket) return i.reply({ content: "couldnt find a ticket for this channel.", ephemeral: true });
       const clicker = i.member as import("discord.js").GuildMember | null;
-      const isAdminOrVMR = clicker && (
-        clicker.permissions.has(PermissionFlagsBits.Administrator) ||
-        memberHasVerificationManagerRole(clicker, i.guild!.id)
-      );
-      if (!isAdminOrVMR) return i.reply({ content: "you don't have permission to close tickets.", ephemeral: true });
+      const isVMR = clicker && memberHasVerificationManagerRole(clicker, i.guild!.id);
+      if (!isVMR) return i.reply({ content: "you don't have permission to close tickets.", ephemeral: true });
       await i.deferReply();
       return closeTicket(i, ticket, null);
     }
@@ -80,11 +77,8 @@ export async function handleButton(interaction: Interaction) {
     if (customId === "ticket_kick") {
       if (!ticket) return i.reply({ content: "couldnt find a ticket for this channel.", ephemeral: true });
       const clicker = i.member as import("discord.js").GuildMember | null;
-      const isAdminOrVMR = clicker && (
-        clicker.permissions.has(PermissionFlagsBits.Administrator) ||
-        memberHasVerificationManagerRole(clicker, i.guild!.id)
-      );
-      if (!isAdminOrVMR) return i.reply({ content: "you don't have permission to kick from tickets.", ephemeral: true });
+      const isVMR = clicker && memberHasVerificationManagerRole(clicker, i.guild!.id);
+      if (!isVMR) return i.reply({ content: "you don't have permission to kick from tickets.", ephemeral: true });
       const member = await i.guild?.members.fetch(ticket.userId).catch(() => null);
       if (member) await member.kick("Removed from ticket").catch(() => {});
       return i.reply({ content: `kicked <@${ticket.userId}>.` });
@@ -95,11 +89,8 @@ export async function handleButton(interaction: Interaction) {
       const guild    = i.guild!;
       const settings = getGuild(guild.id);
       const clicker  = i.member as import("discord.js").GuildMember | null;
-      const isAdminOrVMR = clicker && (
-        clicker.permissions.has(PermissionFlagsBits.Administrator) ||
-        memberHasVerificationManagerRole(clicker, guild.id)
-      );
-      if (!isAdminOrVMR) return i.reply({ content: "you don't have permission to verify members.", ephemeral: true });
+      const isVMR = clicker && memberHasVerificationManagerRole(clicker, guild.id);
+      if (!isVMR) return i.reply({ content: "you don't have permission to verify members.", ephemeral: true });
 
       if (!settings.verificationRole) {
         return i.reply({ content: "no verification role set. run `.vset @role` first.", ephemeral: true });

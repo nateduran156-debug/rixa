@@ -52,25 +52,19 @@ function getMember(i: ChatInputCommandInteraction): GuildMember | null {
 }
 
 function isOwner(i: ChatInputCommandInteraction) { return i.user.id === OWNER_ID; }
-function isAdmin(m: GuildMember) { return m.permissions.has(PermissionFlagsBits.Administrator); }
-function hasManageGuild(m: GuildMember) { return m.permissions.has(PermissionFlagsBits.ManageGuild) || isAdmin(m); }
-function hasManageRoles(m: GuildMember) { return m.permissions.has(PermissionFlagsBits.ManageRoles) || isAdmin(m); }
 
 function isSU(i: ChatInputCommandInteraction): boolean {
   const wl = getWhitelist();
   return isOwner(i) || (wl["bot"] ?? []).includes(i.user.id);
 }
 function admin(i: ChatInputCommandInteraction): boolean {
-  const m = getMember(i);
-  return !!(m && (isAdmin(m) || isSU(i)));
+  return isSU(i);
 }
 function mgGuild(i: ChatInputCommandInteraction): boolean {
-  const m = getMember(i);
-  return !!(m && (hasManageGuild(m) || isSU(i)));
+  return isSU(i);
 }
 function mgRoles(i: ChatInputCommandInteraction): boolean {
-  const m = getMember(i);
-  return !!(m && (hasManageRoles(m) || isSU(i)));
+  return isSU(i);
 }
 function hasFullAccess(i: ChatInputCommandInteraction, cmd: string): boolean {
   const m = getMember(i);
@@ -79,7 +73,6 @@ function hasFullAccess(i: ChatInputCommandInteraction, cmd: string): boolean {
   const gid = i.guildId ?? "";
   return (
     isOwner(i) ||
-    isAdmin(m) ||
     (wl["bot"] ?? []).includes(i.user.id) ||
     (wl[cmd] ?? []).includes(i.user.id) ||
     memberHasTagManagerRole(m, gid) ||

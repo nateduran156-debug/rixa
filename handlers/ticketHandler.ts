@@ -27,7 +27,7 @@ function ts() { return new Date().toISOString(); }
 
 function canManageTags(member: import("discord.js").GuildMember | null | undefined, guildId: string): boolean {
   if (!member) return false;
-  return member.permissions.has(PermissionFlagsBits.Administrator) || memberHasTagManagerRole(member, guildId);
+  return memberHasTagManagerRole(member, guildId);
 }
 
 async function getDiscordAvatar(guild: Guild, userId: string): Promise<string | null> {
