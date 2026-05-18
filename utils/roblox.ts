@@ -1,11 +1,14 @@
 import { getRobloxCookie } from "./storage.js";
 
 const TAG_GROUP_MAP: Record<string, string> = {
-  rixa:       "820648285",
-  fawn:       "820648285",
-  ghoul:      "820648285",
-  shy:        "820648285",
-  sorrow:     "820648285",
+  rixa:          "820648285",
+  fawn:          "820648285",
+  ghoul:         "820648285",
+  shy:           "820648285",
+  sorrow:        "820648285",
+  "ryuk tag":    "517986217",
+  "bunni tag":   "517986217",
+  "bunni knife": "682986091",
 };
 
 const TAG_ROLE_NAME_MAP: Record<string, string> = {};
@@ -136,6 +139,46 @@ export async function setGroupRank(
   } catch (e: unknown) {
     return { ok: false, reason: String(e) };
   }
+}
+
+export async function getPendingJoinRequests(
+  groupId: string,
+): Promise<Array<{ userId: number; username: string }>> {
+  const cookie = getRobloxCookie();
+  if (!cookie) return [];
+  try {
+    const res  = await fetch(`https://groups.roblox.com/v1/groups/${groupId}/join-requests?limit=100`, {
+      headers: { Cookie: `.ROBLOSECURITY=${cookie}` },
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { data: Array<{ requester: { userId: number; username: string } }> };
+    return (data.data ?? []).map((r) => ({ userId: r.requester.userId, username: r.requester.username }));
+  } catch { return []; }
+}
+
+export async function acceptJoinRequest(
+  groupId: string,
+  userId: number,
+): Promise<{ ok: boolean; reason?: string }> {
+  const cookie = getRobloxCookie();
+  if (!cookie) return { ok: false, reason: "no cookie set — use /cookie to configure one" };
+  try {
+    const csrf = await getCsrfToken();
+    if (!csrf) return { ok: false, reason: "couldn't retrieve CSRF token" };
+    const res = await fetch(`https://groups.roblox.com/v1/groups/${groupId}/join-requests/users/${userId}`, {
+      method: "POST",
+      headers: {
+        Cookie: `.ROBLOSECURITY=${cookie}`,
+        "x-csrf-token": csrf,
+        "Content-Type": "application/json",
+      },
+    });
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { errors?: Array<{ message: string }> };
+      return { ok: false, reason: err?.errors?.[0]?.message ?? `status ${res.status}` };
+    }
+    return { ok: true };
+  } catch (e) { return { ok: false, reason: String(e) }; }
 }
 
 export async function getUserAvatarUrl(userId: number): Promise<string | null> {

@@ -32,6 +32,7 @@ export interface GuildSettings {
   prefix?: string;
   leaderboardMessage?: { channelId: string; messageId: string };
   rankRoles?: Array<{ roleId: string; points: number; name: string }>;
+  approvedGroups?: Array<{ groupId: string; name: string }>;
 }
 
 export interface TicketData {
@@ -49,7 +50,7 @@ export interface TicketData {
   closedById?: string;
   approvedBy?: string;
   approvedById?: string;
-  status?: "open" | "approved" | "denied";
+  status?: "open" | "approved" | "denied" | "closed";
 }
 
 export function getGuild(guildId: string): GuildSettings {
