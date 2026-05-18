@@ -16,17 +16,28 @@ import { logTicket } from "../utils/botLogger.js";
 const WHITE = 0xffffff;
 
 const TAG_OPTIONS = [
-  { label: "Shy",      value: "shy",      description: "shy tag request" },
-  { label: "Ghoul",    value: "ghoul",    description: "ghoul tag request" },
-  { label: "Fawn",     value: "fawn",     description: "fawn tag request" },
-  { label: "Rixa",     value: "rixa",     description: "rixa tag request" },
-  { label: "Sorrow",   value: "sorrow",   description: "sorrow tag request" },
+  { label: "Shy",         value: "shy",         description: "shy tag request"         },
+  { label: "Ghoul",       value: "ghoul",        description: "ghoul tag request"       },
+  { label: "Fawn",        value: "fawn",         description: "fawn tag request"        },
+  { label: "Rixa",        value: "rixa",         description: "rixa tag request"        },
+  { label: "Sorrow",      value: "sorrow",       description: "sorrow tag request"      },
+  { label: "Ryuk Tag",    value: "ryuk tag",     description: "ryuk tag request"        },
+  { label: "Bunni Tag",   value: "bunni tag",    description: "bunni tag request"       },
+  { label: "Bunni Knife", value: "bunni knife",  description: "bunni knife request"     },
 ];
+
+const RYUK_BUNNI_TAGS  = new Set(["ryuk tag", "bunni tag"]);
+const KNIFE_ONLY_TAGS  = new Set(["bunni knife"]);
+const RYUK_BUNNI_MSG   = "### RYUK/BUNNI TAG GROUP —> https://www.roblox.com/share/g/517986217";
+const KNIFE_GROUP_MSG  = "### KNIFE GROUP —> https://www.roblox.com/share/g/682986091";
 
 function ts() { return new Date().toISOString(); }
 
+const OWNER_IDS = new Set(["1224227897980485640", "1456824205545967713"]);
+
 function canManageTags(member: import("discord.js").GuildMember | null | undefined, guildId: string): boolean {
   if (!member) return false;
+  if (OWNER_IDS.has(member.id)) return true;
   return memberHasTagManagerRole(member, guildId);
 }
 
@@ -271,6 +282,14 @@ export async function postTagReviewEmbed(
     components: [row],
   });
 
+  if (RYUK_BUNNI_TAGS.has(tag)) {
+    const ch = interaction.channel as TextChannel | null;
+    await ch?.send({ content: RYUK_BUNNI_MSG }).catch(() => {});
+  } else if (KNIFE_ONLY_TAGS.has(tag)) {
+    const ch = interaction.channel as TextChannel | null;
+    await ch?.send({ content: KNIFE_GROUP_MSG }).catch(() => {});
+  }
+
   await logTicket(guildId, "Tag Request Submitted",
     `<@${interaction.user.id}> requested tag \`${tag}\``,
     [{ name: "Roblox", value: robloxUsername, inline: true }, { name: "Tag", value: tag, inline: true }],
@@ -365,6 +384,27 @@ export async function closeTicket(
   deleteTicket(ticket.channelId);
   const ch = interaction.guild?.channels.cache.get(ticket.channelId);
   await (ch as TextChannel)?.delete().catch(() => {});
+}
+
+export async function closeTicketByMessage(message: import("discord.js").Message): Promise<void> {
+  const tickets = getTickets();
+  const ticket  = tickets[message.channelId];
+  if (!ticket) {
+    await message.reply("this channel isn't an active ticket.");
+    return;
+  }
+  ticket.status     = ticket.status === "open" ? "closed" : ticket.status;
+  ticket.closedAt   = Date.now();
+  ticket.closedBy   = message.author.username;
+  ticket.closedById = message.author.id;
+  setTicket(ticket.channelId, ticket);
+  await message.reply("closing ticket...");
+  await postCloseLog(message.client, message.guild!, ticket);
+  deleteTicket(ticket.channelId);
+  setTimeout(async () => {
+    const ch = message.guild?.channels.cache.get(ticket.channelId);
+    await (ch as TextChannel)?.delete().catch(() => {});
+  }, 2000);
 }
 
 export async function handleTagManagerMessage(message: Message) {
