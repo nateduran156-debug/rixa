@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 
-const DATA_DIR = path.resolve(process.cwd(), "data");
+const DATA_DIR = path.resolve(process.cwd(), "artifacts/api-server/data");
 
 export function readJSON<T>(file: string): T {
   const fp = path.join(DATA_DIR, file);
@@ -160,8 +160,11 @@ export function memberHasTagManagerRole(
   guildId: string,
 ): boolean {
   const s = getGuild(guildId);
-  if (!s.tagManagerRole) return false;
-  return member.roles.cache.has(s.tagManagerRole);
+  const roles: string[] = [
+    ...(s.tagManagerRole ? [s.tagManagerRole] : []),
+    ...(s.tagManagerRoles ?? []),
+  ];
+  return roles.some((id) => member.roles.cache.has(id));
 }
 
 export function memberHasVerificationManagerRole(
