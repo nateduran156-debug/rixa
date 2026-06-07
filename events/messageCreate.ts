@@ -149,7 +149,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
 
       const s        = getGuild(guildId);
       const rankInfo = s.groupId ? await getGroupRank(user.id, s.groupId).catch(() => null) : null;
-      const currentRank = rankInfo ? `${rankInfo.rankName} (rank ${rankInfo.rankId})` : "not in group";
+      const currentRank = rankInfo ? `${rankInfo.rankName} (rank ${rankInfo.rankId})` : null;
 
       let robloxNote = "";
       if (tagInput !== "no tag") {
@@ -165,7 +165,7 @@ async function dispatch(cmd: string, args: string[], message: Message, member: G
           color: WHITE,
           description: [
             `**${user.name}**`,
-            `rank: ${currentRank}`,
+            currentRank ? `rank: ${currentRank}` : null,
             `tag: \`${tagInput}\``,
             robloxNote,
           ].filter(Boolean).join("\n"),

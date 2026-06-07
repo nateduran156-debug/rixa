@@ -177,6 +177,18 @@ const commands = [
     .addRoleOption((o) => o.setName("role").setDescription("tag manager role").setRequired(true)),
 
   new SlashCommandBuilder()
+    .setName("wltagmanager")
+    .setDescription("allow a user to use /role from anywhere (servers and DMs)")
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
+    .addUserOption((o) => o.setName("user").setDescription("user to whitelist as tag manager").setRequired(true)),
+
+  new SlashCommandBuilder()
+    .setName("unwltagmanager")
+    .setDescription("remove a user's tag manager access to /role")
+    .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
+    .addUserOption((o) => o.setName("user").setDescription("user to remove from tag manager whitelist").setRequired(true)),
+
+  new SlashCommandBuilder()
     .setName("vmr")
     .setDescription("manage verification manager roles — they can use Verify, Kick, and Close in tickets")
     .setIntegrationTypes(ALL_TYPES).setContexts(ALL_CONTEXTS)
