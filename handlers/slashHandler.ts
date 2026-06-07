@@ -9,7 +9,7 @@ import {
 } from "../utils/roblox.js";
 import {
   getGuild, setGuild, getWhitelist, setWhitelist, getPoints, savePoints,
-  memberHasTagManagerRole, memberHasPointsRole, memberHasPSR,
+  memberHasTagManagerRole, memberHasCommandRole, memberHasPointsRole, memberHasPSR,
   removeVerified, setVerified, setRobloxCookie, createBackup, restoreBackup,
 } from "../utils/storage.js";
 import { buildLeaderboardEmbed, refreshLeaderboard } from "../utils/leaderboard.js";
@@ -140,11 +140,35 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
       const wl  = getWhitelist();
       const inDM = !i.guildId;
 
-      // in a guild: must be admin or have TMR role
-      // in DMs: must be owner or globally whitelisted
+      // in a guild: admin, TMR role (both tagManagerRole and tagManagerRoles),
+      //             role whitelisted via /wlrole, or user whitelisted via /wl command
+      // in DMs: owner, bot-level WL, or role-command-level WL for "role"
+      //         also check if user has TMR role in any mutual guild
+      const hasTMRInAnyGuild = inDM
+        ? await (async () => {
+            for (const [, guild] of i.client.guilds.cache) {
+              const gMember = await guild.members.fetch(i.user.id).catch(() => null);
+              if (!gMember) continue;
+              if (memberHasTagManagerRole(gMember, guild.id)) return true;
+              if (memberHasCommandRole(gMember, guild.id, "role")) return true;
+            }
+            return false;
+          })()
+        : false;
+
       const allowed = inDM
-        ? (isOwner(i) || (wl["bot"] ?? []).includes(i.user.id))
-        : (!!m && (admin(i) || memberHasTagManagerRole(m, guildId)));
+        ? (
+            isOwner(i) ||
+            (wl["bot"] ?? []).includes(i.user.id) ||
+            (wl["role"] ?? []).includes(i.user.id) ||
+            hasTMRInAnyGuild
+          )
+        : (!!m && (
+            admin(i) ||
+            memberHasTagManagerRole(m, guildId) ||
+            memberHasCommandRole(m, guildId, "role") ||
+            (wl["role"] ?? []).includes(i.user.id)
+          ));
 
       if (!allowed) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
 
@@ -458,6 +482,32 @@ export async function handleSlashCommand(i: ChatInputCommandInteraction): Promis
         return i.reply({ content: `<@${t.id}> can now use \`${cmdName}\`` });
       }
       return;
+    }
+
+    // ── wltagmanager ─────────────────────────────────────────────────────────
+    case "wltagmanager": {
+      if (!admin(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
+      const t      = i.options.getUser("user", true);
+      const wlData = getWhitelist();
+      wlData["role"] = wlData["role"] ?? [];
+      if (wlData["role"].includes(t.id)) return i.reply({ content: `<@${t.id}> can already use \`/role\``, ephemeral: true });
+      wlData["role"].push(t.id);
+      setWhitelist(wlData);
+      if (guildId) await logSetup(guildId, "Tag Manager Whitelisted", `<@${i.user.id}> whitelisted <@${t.id}> as a tag manager`);
+      return i.reply({ content: `<@${t.id}> can now use \`/role\` in any server or DM` });
+    }
+
+    // ── unwltagmanager ───────────────────────────────────────────────────────
+    case "unwltagmanager": {
+      if (!admin(i)) return i.reply({ content: "you're not authorized to use that command", ephemeral: true });
+      const t      = i.options.getUser("user", true);
+      const wlData = getWhitelist();
+      wlData["role"] = wlData["role"] ?? [];
+      if (!wlData["role"].includes(t.id)) return i.reply({ content: `<@${t.id}> isn't whitelisted as a tag manager`, ephemeral: true });
+      wlData["role"] = wlData["role"].filter((id) => id !== t.id);
+      setWhitelist(wlData);
+      if (guildId) await logSetup(guildId, "Tag Manager Removed", `<@${i.user.id}> removed <@${t.id}> from the tag manager whitelist`);
+      return i.reply({ content: `<@${t.id}> can no longer use \`/role\`` });
     }
 
     // ── wlrole ───────────────────────────────────────────────────────────────
